@@ -147,6 +147,8 @@ console.log("****** print graph *********\n\n\n\n\n")
          * @param destination 
          */
         move(destination: Place): VillageState {
+
+            console.log('\n')
             
             if (!roadGraph.get(this.place)?.includes(destination)) {
                 console.error('cannot move from', this.place, 'to destination', destination)
@@ -160,7 +162,14 @@ console.log("****** print graph *********\n\n\n\n\n")
                     console.log('deliver parcel', parcel, 'at destination', destination)
                 }
                 return notDelivered
-            }).map(parcel => { return {place: destination, address: parcel.address}})
+            }).map(parcel => { 
+                if (parcel.place != this.place) { return parcel; }
+                const movedParcel = {place: destination, address: parcel.address};
+                console.log('transport parcel to', movedParcel)
+                return movedParcel
+            })
+            console.log('\n')
+
             return new VillageState(destination, remainingParcels);
 
         }

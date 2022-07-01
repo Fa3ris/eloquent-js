@@ -107,6 +107,7 @@ class VillageState {
      */
     move(destination) {
         var _a;
+        console.log('\n');
         if (!((_a = roadGraph.get(this.place)) === null || _a === void 0 ? void 0 : _a.includes(destination))) {
             console.error('cannot move from', this.place, 'to destination', destination);
             return this;
@@ -118,7 +119,15 @@ class VillageState {
                 console.log('deliver parcel', parcel, 'at destination', destination);
             }
             return notDelivered;
-        }).map(parcel => { return { place: destination, address: parcel.address }; });
+        }).map(parcel => {
+            if (parcel.place != this.place) {
+                return parcel;
+            }
+            const movedParcel = { place: destination, address: parcel.address };
+            console.log('transport parcel to', movedParcel);
+            return movedParcel;
+        });
+        console.log('\n');
         return new VillageState(destination, remainingParcels);
     }
     static random(parcelCount = 5) {
