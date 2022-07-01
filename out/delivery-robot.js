@@ -29,6 +29,22 @@ function randomRobot(state) {
         memory: undefined
     };
 }
+// has duplicates because need to find a valid paths between places
+const mailRoute = [
+    "Alice's House", "Cabin", "Alice's House", "Bob's House",
+    "Town Hall", "Daria's House", "Ernie's House",
+    "Grete's House", "Shop", "Grete's House", "Farm",
+    "Marketplace", "Post Office"
+];
+function predefinedRouteRobot(state, memory) {
+    if (memory.length == 0) {
+        memory = mailRoute;
+    }
+    return {
+        direction: memory[0],
+        memory: memory.slice(1)
+    };
+}
 const roads = [
     "Alice's House-Bob's House", "Alice's House-Cabin",
     "Alice's House-Post Office", "Bob's House-Town Hall",
@@ -165,18 +181,29 @@ if (false) {
     console.log('random', VillageState.random(1e5)); // fail for 1e8 - no more heap space
 }
 const testSet = VillageState.random();
-console.log("BEGIN RANDOM ROBOT \n");
-const n = 1000;
-const results = new Array(n);
-for (let i = 0; i < n; ++i) {
-    results[i] = runRobot(testSet, randomRobot, {});
+const n = 1e5;
+{
+    console.log("BEGIN RANDOM ROBOT\n");
+    const results = new Array(n);
+    for (let i = 0; i < n; ++i) {
+        results[i] = runRobot(testSet, randomRobot, {});
+    }
+    const sum = results.reduce((prev, curr) => prev + curr, 0);
+    const avg = sum / n;
+    console.log("\n\nEND RANDOM ROBOT");
+    console.log(results);
+    console.log('sum', sum);
+    console.debug('\x1b[32m%s\x1b[0m %s', 'random robot average', avg);
 }
-const sum = results.reduce((prev, curr) => prev + curr, 0);
-const avg = sum / n;
-console.log("\n\nEND RANDOM ROBOT");
-console.debug(results);
-console.debug('sum', sum);
-console.debug('\x1b[32m%s %s', 'average', avg);
+{
+    const results = new Array(n);
+    for (let i = 0; i < n; ++i) {
+        results[i] = runRobot(testSet, predefinedRouteRobot, []);
+    }
+    const sum = results.reduce((prev, curr) => prev + curr, 0);
+    const avg = sum / n;
+    console.debug('\x1b[32m%s\x1b[0m %s', 'predefined route robot average', avg);
+}
 // \x1B = ASCII escape character 
 // \x1b[0m to reset color
-console.debug('\x1b[36m%s\x1b[0m', 'I am cyan');
+console.log('\x1b[36m%s\x1b[0m', 'I am cyan');
