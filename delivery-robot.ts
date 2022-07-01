@@ -1,3 +1,9 @@
+// turn off info log level
+const _savedLog = console.log;
+console.log = () => {}
+
+Object.freeze(console); // prevent further modif TypeError: Cannot add property fun, object is not extensible
+
 type Road = string;
 
 type Place = string;
@@ -19,12 +25,12 @@ type RobotAction = {
 type robotFn = (state: VillageState, memory: RobotMemory) => RobotAction;
 
 
-function runRobot(state: VillageState, robot: robotFn, memory: RobotMemory): void {
+function runRobot(state: VillageState, robot: robotFn, memory: RobotMemory): number {
 
     for (let turn = 0 ; /* no exit */ ; ++turn) {
         if (state.allParcelsDelivered) {
             console.log('finished deliver all parcels in', turn, 'turns')
-            break
+            return turn
         }
 
         const action = robot(state, memory)
@@ -207,11 +213,28 @@ console.log("****** print graph *********\n\n\n\n\n")
     }
 
     if (false) {
-    console.log('random', VillageState.random())
-    console.log('random', VillageState.random(1e5)) // fail for 1e8
+        console.log('random', VillageState.random())
+        console.log('random', VillageState.random(1e5)) // fail for 1e8 - no more heap space
     }
 
+    const testSet = VillageState.random()
     console.log("BEGIN RANDOM ROBOT \n")
-    runRobot(VillageState.random(), randomRobot, {});
+
+    const n = 1000
+    const results = new Array(n);
+    for (let i = 0; i < n; ++i) {
+        results[i] = runRobot(testSet, randomRobot, {});
+    }
+
+    const sum = results.reduce((prev, curr) => prev + curr, 0)
+    const avg = sum / n;
 
     console.log("\n\nEND RANDOM ROBOT")
+
+    console.debug(results)
+    console.debug('sum', sum)
+    console.debug('\x1b[32m%s %s', 'average', avg)
+
+    // \x1B = ASCII escape character 
+    // \x1b[0m to reset color
+    console.debug('\x1b[36m%s\x1b[0m', 'I am cyan');
