@@ -27,6 +27,8 @@ type robotFn = (state: VillageState, memory: RobotMemory) => RobotAction;
 
 function runRobot(state: VillageState, robot: robotFn, memory: RobotMemory): number {
 
+    console.log('init state'.toUpperCase() )
+    state.print()
     for (let turn = 0 ; /* no exit */ ; ++turn) {
         if (state.allParcelsDelivered) {
             console.log('finished deliver all parcels in', turn, 'turns')
@@ -36,6 +38,10 @@ function runRobot(state: VillageState, robot: robotFn, memory: RobotMemory): num
         const action = robot(state, memory)
         console.log('robot moved to direction', action.direction)
         state = state.move(action.direction)
+        console.log('state at turn ', turn, )
+        state.print()
+        console.log('\n')
+
         memory = action.memory
     }
 }
@@ -73,6 +79,27 @@ function predefinedRouteRobot(state: VillageState, memory: Place[]): RobotAction
     return {
         direction: memory[0], 
         memory: memory.slice(1)
+    }
+}
+
+function pathFindingRobot(state: VillageState, route: Route): RobotAction {
+    console.debug('remaining parcels to deliver', state.remainingParcelCount)
+    console.debug('current place', state.currentPlace)
+    if (route.length === 0) { // init or no parcel pending
+        const parcelToDeliver = state.nextParcel
+        console.debug('need to deliver parcel', parcelToDeliver)
+        if (state.currentPlace !== parcelToDeliver.place) { // go pickup parcel
+            console.debug('go pickup parcel', parcelToDeliver)
+            route = breadthFirstSearch(roadGraph, state.currentPlace, parcelToDeliver.place)
+        } else { // go deliver parcel
+            console.debug('go deliver parcel', parcelToDeliver)
+            route = breadthFirstSearch(roadGraph, state.currentPlace, parcelToDeliver.address)
+        }
+    }
+    console.debug('route followed by robot is', route, '\n\n')
+    return {
+        direction: route[0],
+        memory: route.slice(1)
     }
 }
 
@@ -156,6 +183,14 @@ console.log("****** print graph *********\n\n\n\n\n")
             this.parcels = parcels
         }
 
+        get nextParcel(): Parcel {
+            return Object.assign({}, this.parcels[0])
+        }
+
+        get remainingParcelCount() : number {
+            return this.parcels.length
+        }
+
         get allParcelsDelivered(): boolean {
             return this.parcels.length == 0 
         }
@@ -183,7 +218,7 @@ console.log("****** print graph *********\n\n\n\n\n")
             const remainingParcels = this.parcels.filter(parcel => {
                 const notDelivered = parcel.address !== destination
                 if (!notDelivered) {
-                    console.log('deliver parcel', parcel, 'at destination', destination)
+                    console.debug('deliver parcel', parcel, 'at destination', destination)
                 }
                 return notDelivered
             }).map(parcel => { 
@@ -211,6 +246,10 @@ console.log("****** print graph *********\n\n\n\n\n")
             }
             return new VillageState("Post Office", parcels);
         }
+
+        print() {
+            console.log('village state', this)
+        }
     }
 
     // TESTING
@@ -237,9 +276,15 @@ console.log("****** print graph *********\n\n\n\n\n")
 
     const testSet = VillageState.random()
 
-    const n = 1e5
+    const n = 1
 
-    {
+    if (false) {
+        console.log("****** print graph *********")
+        for (let [key, val] of roadGraph.entries()) {
+            console.log("start", key, "can join", val)
+        }
+        console.log("****** print graph *********\n\n\n\n\n")
+
         console.log("BEGIN RANDOM ROBOT\n")
         const results = new Array(n);
         for (let i = 0; i < n; ++i) {
@@ -257,13 +302,24 @@ console.log("****** print graph *********\n\n\n\n\n")
    
 
     {
+        console.log("****** print graph *********")
+        for (let [key, val] of roadGraph.entries()) {
+            console.log("start", key, "can join", val)
+        }
+        console.log("****** print graph *********\n\n\n\n\n")
+
+        console.log("BEGIN ROUTE ROBOT\n")
+
         const results = new Array(n);
         for (let i = 0; i < n; ++i) {
             results[i] = runRobot(testSet, predefinedRouteRobot, []);
         }
+
+        console.log("\n\nEND ROUTE ROBOT")
     
         const sum = results.reduce((prev, curr) => prev + curr, 0)
         const avg = sum / n;
+        
         console.debug('\x1b[32m%s\x1b[0m %s', 'predefined route robot average', avg)
     }
 
@@ -271,3 +327,89 @@ console.log("****** print graph *********\n\n\n\n\n")
     // \x1B = ASCII escape character 
     // \x1b[0m to reset color
     console.log('\x1b[36m%s\x1b[0m', 'I am cyan');
+
+    type Route = Place[]
+
+    function breadthFirstSearch(graph: RoadGraph, from: Place, to: Place): Route {
+        const visited: Set<Place> = new Set();
+        const queue: {at : Place, route: Route}[] = []
+        queue.push({at: from, route: []})
+        visited.add(from);
+
+        while (queue.length > 0) {
+
+            const dequeued = queue.shift()
+            if (!dequeued) {
+                console.error("impossible")
+                return []
+            }
+            const places = graph.get(dequeued.at)
+            if (!places) {
+                console.log("dead end at", dequeued.at)
+                continue
+            }
+
+            for (let place of places) {
+                if (visited.has(place)) {
+                    console.log("place already visited", place)
+                    continue
+                }
+                if (place === to) { // on a trouve un chemin
+                    console.log('found route')
+                    return dequeued.route.concat(place)
+                }
+                visited.add(place)
+
+                const newSubPath = {at : place, route: dequeued.route.concat(place)}
+                console.log('subpath', newSubPath)
+                queue.push(newSubPath)
+            }
+        }
+        console.error('impossible too')
+        return []
+    }
+
+    console.log(breadthFirstSearch(roadGraph, "Post Office", "Shop"))
+
+    {
+
+        const places = Array.from(roadGraph.keys())
+
+        const routes : [Place, Place, Route][] = [] 
+        for (let from of places) {
+            for (let to of places) {
+                if (from === to) {
+                    continue
+                }
+                routes.push([from, to, breadthFirstSearch(roadGraph, from, to)])
+
+            }
+        }
+        for (let route of routes) {
+            console.log(route)
+        }
+        console.log(routes.length)
+    }
+
+
+    {
+        console.log("****** print graph *********")
+        for (let [key, val] of roadGraph.entries()) {
+            console.log("start", key, "can join", val)
+        }
+        console.log("****** print graph *********\n\n\n\n\n")
+
+        console.log("BEGIN PATH FINDING ROBOT\n")
+
+        const results = new Array(n);
+        for (let i = 0; i < n; ++i) {
+            results[i] = runRobot(testSet, pathFindingRobot, []);
+        }
+
+        console.log("\n\nEND PATH FINDING ROBOT")
+    
+        const sum = results.reduce((prev, curr) => prev + curr, 0)
+        const avg = sum / n;
+        
+        console.debug('\x1b[32m%s\x1b[0m %s', 'predefined path finding robot average', avg)
+    }
