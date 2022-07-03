@@ -1,7 +1,8 @@
 // turn off info log level
 const _savedLog = console.log;
-console.log = () => {}
-
+const noop = () => {}
+// console.log = noop
+// console.debug = noop
 Object.freeze(console); // prevent further modif TypeError: Cannot add property fun, object is not extensible
 
 type Road = string;
@@ -103,6 +104,85 @@ function pathFindingRobot(state: VillageState, route: Route): RobotAction {
     }
 }
 
+function closestPathFindingRobot(state: VillageState, route: Route): RobotAction {
+    /* 
+        find closest parcel from current place 
+    
+        if multiple closest parcels, select a route to parcel to pickup at its place instead of deliver at its address,
+         because we may not have the parcel yet
+    */
+   
+    if (route.length == 0) {
+        const remainings = state.remainingParcels
+        const routesToPickup = []
+        const routesToDeliver = []
+        const possibleDeliverPlaces = new Set<Place>()
+        const possiblePickupPlaces = new Set<Place>()
+
+        for (let parcel of remainings) {
+            if (state.currentPlace !== parcel.place) { // does not have parcel yet
+                possiblePickupPlaces.add(parcel.place)
+            } else {
+                if (state.currentPlace !== parcel.address) { // can deliver parcel
+                    possibleDeliverPlaces.add(parcel.address)
+                }
+            }
+        }
+        /* 
+        no need to compute routes for all parcel, need only find possible pickup and deliver places 
+        */
+
+        for (let pickupPlace of possiblePickupPlaces.keys()) {
+            routesToPickup.push(breadthFirstSearch(roadGraph, state.currentPlace, pickupPlace))
+
+        }
+
+        for (let deliverPlace of possibleDeliverPlaces.keys()) {
+            routesToDeliver.push(breadthFirstSearch(roadGraph, state.currentPlace, deliverPlace))
+        }
+
+        // for (let parcel of remainings) {
+          
+        //     if (state.currentPlace !== parcel.place) { // go pickup parcel
+        //         routesToPickup.push(breadthFirstSearch(roadGraph, state.currentPlace, parcel.place))
+        //     } else {
+        //         routesToDeliver.push(breadthFirstSearch(roadGraph, state.currentPlace, parcel.address))
+        //     }
+        // }
+
+        let shortestRouteToPickupLength = Infinity
+        let shortestRouteToPickupIndex = -1
+
+        for (let i = 0; i < routesToPickup.length ; ++i) {
+            if (routesToPickup[i].length < shortestRouteToPickupLength) {
+                shortestRouteToPickupLength = routesToPickup[i].length
+                shortestRouteToPickupIndex = i
+            }
+        }
+
+        let shortestRouteToDeliverLength = Infinity
+        let shortestRouteToDeliverIndex = -1
+
+        for (let i = 0; i < routesToDeliver.length ; ++i) {
+            if (routesToDeliver[i].length < shortestRouteToDeliverLength) {
+                shortestRouteToDeliverLength = routesToDeliver[i].length
+                shortestRouteToDeliverIndex = i
+            }
+        }
+
+        if (shortestRouteToPickupLength < shortestRouteToDeliverLength) { // prefer pickup over delivering
+            route = routesToPickup[shortestRouteToPickupIndex]
+        } else {
+            route = routesToDeliver[shortestRouteToDeliverIndex]
+        }
+    }
+    return {
+        direction: route[0],
+        memory: route.slice(1)
+    }
+    
+}
+
 const roads: Road[] = [
     "Alice's House-Bob's House",   "Alice's House-Cabin",
     "Alice's House-Post Office",   "Bob's House-Town Hall",
@@ -191,6 +271,13 @@ console.log("****** print graph *********\n\n\n\n\n")
             return this.parcels.length
         }
 
+        /**
+         * returns a copy
+         */
+        get remainingParcels(): Parcel[] {
+            return [...this.parcels]
+        }
+
         get allParcelsDelivered(): boolean {
             return this.parcels.length == 0 
         }
@@ -216,7 +303,12 @@ console.log("****** print graph *********\n\n\n\n\n")
 
             console.log('move to destination', destination)
             const remainingParcels = this.parcels.filter(parcel => {
-                const notDelivered = parcel.address !== destination
+                const deliveredAtCurrentPlace = this.place === parcel.address /*
+                 if when leave current place we are already at a place where a parcel can be delivered 
+                 can happen if on init state, a parcel address is the current place
+                */
+                const deliveredAtNextPlace = parcel.address === destination
+                const notDelivered = !deliveredAtCurrentPlace && !deliveredAtNextPlace
                 if (!notDelivered) {
                     console.debug('deliver parcel', parcel, 'at destination', destination)
                 }
@@ -274,8 +366,11 @@ console.log("****** print graph *********\n\n\n\n\n")
         console.log('random', VillageState.random(1e5)) // fail for 1e8 - no more heap space
     }
 
-    const testSet = VillageState.random()
+    let testSet = VillageState.random(400)
 
+    /**
+     * number of tests
+     */
     const n = 1
 
     if (false) {
@@ -301,7 +396,7 @@ console.log("****** print graph *********\n\n\n\n\n")
     }
    
 
-    {
+    if (false) {
         console.log("****** print graph *********")
         for (let [key, val] of roadGraph.entries()) {
             console.log("start", key, "can join", val)
@@ -320,7 +415,7 @@ console.log("****** print graph *********\n\n\n\n\n")
         const sum = results.reduce((prev, curr) => prev + curr, 0)
         const avg = sum / n;
         
-        console.debug('\x1b[32m%s\x1b[0m %s', 'predefined route robot average', avg)
+        console.error('\x1b[32m%s\x1b[0m %s', 'predefined route robot average', avg)
     }
 
 
@@ -371,7 +466,7 @@ console.log("****** print graph *********\n\n\n\n\n")
 
     console.log(breadthFirstSearch(roadGraph, "Post Office", "Shop"))
 
-    {
+    if (false)  {
 
         const places = Array.from(roadGraph.keys())
 
@@ -392,7 +487,7 @@ console.log("****** print graph *********\n\n\n\n\n")
     }
 
 
-    {
+    if (false)  {
         console.log("****** print graph *********")
         for (let [key, val] of roadGraph.entries()) {
             console.log("start", key, "can join", val)
@@ -411,5 +506,27 @@ console.log("****** print graph *********\n\n\n\n\n")
         const sum = results.reduce((prev, curr) => prev + curr, 0)
         const avg = sum / n;
         
-        console.debug('\x1b[32m%s\x1b[0m %s', 'predefined path finding robot average', avg)
+        console.error('\x1b[32m%s\x1b[0m %s', 'predefined path finding robot average', avg)
+    }
+
+    if (true) {
+        console.log("****** print graph *********")
+        for (let [key, val] of roadGraph.entries()) {
+            console.log("start", key, "can join", val)
+        }
+        console.log("****** print graph *********\n\n\n\n\n")
+
+        console.log("BEGIN CLOSEST PATH FINDING ROBOT\n")
+
+        const results = new Array(n);
+        for (let i = 0; i < n; ++i) {
+            results[i] = runRobot(testSet, closestPathFindingRobot, []);
+        }
+
+        console.log("\n\nEND CLOSEST PATH FINDING ROBOT")
+    
+        const sum = results.reduce((prev, curr) => prev + curr, 0)
+        const avg = sum / n;
+        
+        console.error('\x1b[32m%s\x1b[0m %s', 'predefined path finding robot average', avg)
     }
