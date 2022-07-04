@@ -8,3 +8,5 @@
 
 - /!\/!\/!\ The fact that something sounds like an object DOES NOT automatically mean that it should be an object in program. /!\/!\/!\
 
+- TODO: implement parcel delivery in module style architecture if feel motivated
+
