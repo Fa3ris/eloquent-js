@@ -14,7 +14,7 @@ console.log(readdirSync('.'))
 
 const tgzPattern = /.tgz$/
 
-const filenamesToCopy = []
+const filenamesToCopy: string[] = []
 for (let name of readdirSync('.')) {
     if (tgzPattern.test(name)) {
         console.log(`${name} matches`)
