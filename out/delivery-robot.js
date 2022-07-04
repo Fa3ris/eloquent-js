@@ -2,7 +2,7 @@
 // turn off info log level
 const _savedLog = console.log;
 const noop = () => { };
-// console.log = noop
+console.log = noop;
 // console.debug = noop
 Object.freeze(console); // prevent further modif TypeError: Cannot add property fun, object is not extensible
 function runRobot(state, robot, memory) {
@@ -404,7 +404,7 @@ if (false) {
     const avg = sum / n;
     console.error('\x1b[32m%s\x1b[0m %s', 'predefined path finding robot average', avg);
 }
-if (true) {
+if (false) {
     console.log("****** print graph *********");
     for (let [key, val] of roadGraph.entries()) {
         console.log("start", key, "can join", val);
@@ -420,3 +420,28 @@ if (true) {
     const avg = sum / n;
     console.error('\x1b[32m%s\x1b[0m %s', 'predefined path finding robot average', avg);
 }
+function compareRobots(robot1, memory1, robot2, memory2) {
+    const n = 10;
+    const results1 = [];
+    const results2 = [];
+    for (let i = 0; i < n; i++) {
+        const test = VillageState.random(5);
+        results1[i] = runRobot(test, robot1, memory1);
+        results2[i] = runRobot(test, robot2, memory2);
+    }
+    const avg1 = results1.reduce((prev, curr) => prev + curr, 0) / n;
+    const avg2 = results2.reduce((prev, curr) => prev + curr, 0) / n;
+    console.debug("avg1", avg1);
+    console.debug("avg2", avg2);
+    if (avg1 < avg2) {
+        console.debug('robot 1 is better');
+    }
+    else {
+        console.debug('robot 2 is better');
+    }
+}
+const randomRobotConfig = [randomRobot, []];
+const routeRobotConfig = [predefinedRouteRobot, []];
+const pathFindingRobotConfig = [pathFindingRobot, []];
+const closestPathFindingRobotConfig = [closestPathFindingRobot, []];
+compareRobots(pathFindingRobot, [], closestPathFindingRobot, []);
