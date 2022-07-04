@@ -1,5 +1,5 @@
 {
-  "include": ["*", "roads-module-style/**/*"],
+  "include": ["*", "roads-module-style/**/*", "crow-nestwork/**/*"],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
 
