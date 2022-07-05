@@ -1,4 +1,4 @@
-import { PerformanceObserver, performance } from 'perf_hooks';
+import { performance } from 'perf_hooks';
 console.log('crow network')
 
 type CacheName = string;
@@ -81,6 +81,7 @@ function defineRequestTypeHandlerPromise(type: MessageType, responseProducer: Re
                 response => messageHandlingFinishedHandler(undefined, response),
                 error => messageHandlingFinishedHandler(error, undefined))
         } catch (error) {
+            console.log('response producer failed', error, {dest, type})
             messageHandlingFinishedHandler(error, undefined)
             return
         }
@@ -95,21 +96,26 @@ function sendRequest(nest: CrowNest, dest: NestName, type: MessageType, content:
         let currentAttempt = 1;
         function attempt(n: number): void {
 
-            // need to get timeoutID before else it may be undefined when call clearTimeout()
-            const timeoutID = setTimeout(() => {
-                console.log({dest , type}, 'execute retry callback for attempt', n, done)
+            const requestTimeoutHandler = () => {
+                console.log({dest , type}, 'handle timeout for attempt', n, done)
                 if (done) {
-                    console.log({dest , type}, 'exit retry callback for attempt', n, done)
+                    console.log({dest , type}, 'exit handle timeout for attempt', n, done)
                     return
                 }
-                if (n < 3) {
+                if (n < 3) { // max attempts
                     currentAttempt = n + 1
+                    console.log({dest , type}, 'retry attempt', currentAttempt, done)
                     attempt(currentAttempt)
                 }
-                else {reject(new Error("attempt " + n + " timed out"))}
-            }, 250);
+                else {
+                    console.log({dest, type}, "exceed max attempts", n)
+                    reject(new Error("attempt " + n + " timed out"))}
+            }
 
-            nest.send(dest, type, content, (failedReason, value) => {
+            // need to get timeoutID before, else it may be undefined when call clearTimeout()
+            const timeoutID = setTimeout(requestTimeoutHandler, 250); // timeout
+
+            const messageHandlingFinishedHandler: MessageHandlingFinishedHandler = (failedReason, value) => {
                 console.log('received response for', {dest, type}, {error: failedReason?.message, response: value})
                 if (n !== currentAttempt) {
                     // response has arrived too late, ignore it
@@ -120,8 +126,9 @@ function sendRequest(nest: CrowNest, dest: NestName, type: MessageType, content:
                 clearTimeout(timeoutID)
                 if (failedReason) { reject(failedReason) } 
                 else { resolve(value) }
-            })
+            }
 
+            nest.send(dest, type, content, messageHandlingFinishedHandler)
            
         }
         attempt(currentAttempt)
