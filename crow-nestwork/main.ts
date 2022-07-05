@@ -7,8 +7,18 @@ type FoodCache = any;
 type Nest = string;
 type MessageType = 'note'
 
+type ResponseProducer = (dest: Nest, content: any, src: Nest) => any | Promise<any>
+
+type MessageHandlingFinishedHandler = (error: any, value: any) => void
+
+type MessageHandler = (dest: Nest, content: any, src: Nest, messageHandlingFinishedHandler: MessageHandlingFinishedHandler) => void
+
+
 class CrowNest {
 
+    name: string = 'a nest'
+    
+    neighbors = new Set<CrowNest>()
 
     readStorageCallback(name: CacheName, callback: (cache: FoodCache) => void) {
 
@@ -21,32 +31,27 @@ class CrowNest {
         })
     }
 
-    send(dest: Nest, type: MessageType, content: any, callback: (failedReason: any, value: any) => void) {
+    send(dest: Nest, type: MessageType, content: any, messageHandlingFinishedHandler: MessageHandlingFinishedHandler) {
 
 
     }
 }
 
-function defineRequestTypeHandlerCallback(type: MessageType, 
-    callback: (dest: Nest, content: any, src: Nest, done: (failedReason: any, value: any) => void) => void) {}
+function defineRequestTypeHandlerCallback(type: MessageType, callback: MessageHandler) {}
 
-function defineRequestTypeHandlerPromise(type: MessageType, handler: (dest: Nest, content: any, src: Nest) => any | Promise<any>) {
+function defineRequestTypeHandlerPromise(type: MessageType, responseProducer: ResponseProducer) {
  
-    defineRequestTypeHandlerCallback(type, 
-        (dest: Nest, content: any, src: Nest, done: (failedReason: any, value: any) => void) => {
-
-        let val
+    const messageHandler : MessageHandler = (dest, content, src, messageHandlingFinishedHandler) => {
         try {
-            val = handler(dest, content, src)
+            Promise.resolve(responseProducer(dest, content, src)).then(
+                response => messageHandlingFinishedHandler(undefined, response),
+                error => messageHandlingFinishedHandler(error, undefined))
         } catch (error) {
-            done(error, undefined)
+            messageHandlingFinishedHandler(error, undefined)
             return
         }
-        Promise.resolve(val).then(
-            response => done(undefined, response),
-            error => done(error, undefined) 
-        )
-    })
+    }
+    defineRequestTypeHandlerCallback(type, messageHandler)
 }
 
 
@@ -58,7 +63,7 @@ function sendRequest(nest: CrowNest, dest: Nest, type: MessageType, content: any
 
             nest.send(dest, type, content, (failedReason, value) => {
                 if (n !== currentAttempt) {
-                    // response has arrived to late, ignore it
+                    // response has arrived too late, ignore it
                     return
                 }
                 done = true
