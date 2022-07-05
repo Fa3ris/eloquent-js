@@ -24,7 +24,7 @@ class CrowNest {
 
     name: NestName
     
-    neighbors = new Set<CrowNest>()
+    neighbors = new Set<NestName>()
 
     constructor(name: NestName) {
         this.name = name
@@ -43,11 +43,15 @@ class CrowNest {
 
     send(dest: NestName, type: MessageType, content: any, messageHandlingFinishedHandler: MessageHandlingFinishedHandler) {
 
+        if (!this.neighbors.has(dest)) {
+            messageHandlingFinishedHandler(new Error(dest + ' is not among neighbors of nest ' + this.name), undefined)
+            return
+        }
         const targetCrowNest = crowNests.get(dest)
 
         if (!targetCrowNest) {
             
-            messageHandlingFinishedHandler(new Error('no handler found for message type ' + type), undefined)
+            messageHandlingFinishedHandler(new Error('no crow nest found dest ' + dest), undefined)
             return
         }
 
@@ -136,26 +140,87 @@ function sendRequest(nest: CrowNest, dest: NestName, type: MessageType, content:
 }
 
 
-crowNests.set('B', new CrowNest('B'))
 
 
 defineRequestTypeHandlerPromise('ping', () => "pong")
 
 
 const sender =  new CrowNest('A')
+sender.neighbors.add('B')
+
+const bNest = new CrowNest('B')
+
+const cNest = new CrowNest('C')
+
+const dNest = new CrowNest('D')
+
+const nests: {[name: NestName]: CrowNest} = {
+    'A' : sender,
+    'B' : bNest,
+    'C' : cNest,
+    'D' : dNest
+}
+
+for (let name of ['A', 'B', 'C', 'D']) {
+    crowNests.set(name, nests[name])
+}
+
+const connections = ['A-B', 'B-C', 'C-D']
+
+for (let connection of connections) {
+    const [nest1, nest2] = connection.split('-')
+    nests[nest1].neighbors.add(nest2)
+    nests[nest2].neighbors.add(nest1)
+}
+
 
 const t0 = performance.now()
-if (true)
 
+if (true)
 sendRequest(sender, 'B', 'ping', undefined).then(response => {
     console.log('ping - delay', performance.now() - t0)
     console.log('ping -', response)
 },
     error => {console.error('ping -', error)})
 
-    if (true)
+if (true)
 sendRequest(sender, 'B', 'note', undefined).then(response => {
     console.log('note - delay', performance.now() - t0)
     console.log('note -', response)
 },
     error => {console.error('note -', error.message)})
+
+
+function requestPingTargets(sender: CrowNest, targets: NestName[]) {
+    const promises: Promise<any>[] = []
+    for (let pingTarget of targets) {
+        promises.push(sendRequest(sender, pingTarget, 'ping', undefined)
+            .then(() => true, () => false)
+        )
+    }
+    
+    Promise.all(promises).then(results => {
+        console.log(results.map((value, i) => `${sender.name} ${value ? '---' : '-x-'} ${targets[i]}`
+        ))
+    })
+}
+
+requestPingTargets(sender, ['B', 'C', 'D'])
+
+requestPingTargets(bNest, ['A', 'C', 'D'])
+requestPingTargets(cNest, ['A', 'B', 'D'])
+requestPingTargets(dNest, ['A', 'B', 'C'])
+
+// const pingTargets = ['B', 'C', 'D']
+// const promises: Promise<any>[] = []
+// for (let pingTarget of pingTargets) {
+//     promises.push(sendRequest(sender, pingTarget, 'ping', undefined)
+//         .then(() => true, () => false)
+//     )
+// }
+
+// Promise.all(promises).then(results => {
+//     console.log(results.map((value, i) => `${pingTargets[i]} ${value ? 'can be joined' : 'cannot be joined'} by ${sender.name}`
+//     ))
+// })
+
