@@ -6,7 +6,7 @@ type CacheName = string;
 type FoodCache = any;
 
 type NestName = string;
-type MessageType = 'note' | 'ping' | 'gossip' | 'connections'
+type MessageType = 'note' | 'ping' | 'gossip' | 'connections' | 'route' | 'message' | 'ack'
 
 type ResponseProducer = (dest: CrowNest, content: any, src: NestName) => any | Promise<any>
 
@@ -348,7 +348,7 @@ function printConnectionsRepeat(interval = 1000) {
     }, interval);
 }
 
-printConnectionsRepeat()
+false && printConnectionsRepeat()
 
 
 function findGateway(nest: CrowNest, target: NestName): NestName {
@@ -398,3 +398,73 @@ function findGateway(nest: CrowNest, target: NestName): NestName {
     }
     throw `no path found from ${nest.name} to ${target}`
 }
+
+
+function routeRequest(nest: CrowNest, content: {target: NestName, type: MessageType, content: any, src: NestName}): Promise<any> {
+    
+    false && console.log(nest.name, 'route request from', content.src, 'to', content.target)
+    if (nest.neighbors.has(content.target)) {
+        console.log(nest.name, 'route request from', content.src, 'to', content.target, 'directly')
+        return sendRequest(nest, content.target, content.type, {content: content.content, src: content.src})
+    } else {
+        let gateway
+        try {
+            gateway = findGateway(nest, content.target)
+        } catch (error) {
+            return Promise.reject(error)
+        }
+        console.log(nest.name, 'route request from', content.src, 'to', content.target, 'via', gateway)
+        return sendRequest(nest, gateway, 'route', content)
+    }
+}
+
+defineRequestTypeHandlerPromise('route', (dest: CrowNest, content: {target: NestName, type: MessageType, content: any, src: NestName}, src: NestName): Promise<any> => {
+    return routeRequest(dest, content)
+
+})
+
+defineRequestTypeHandlerPromise('message', (dest: CrowNest, content: {target: NestName, type: MessageType, content: {content: any, src: NestName}, src: NestName}, src: NestName) => {
+    
+    console.log(dest.name, 'received message from',  content)
+
+    deliverAck(dest, content.src)
+    return 'OK'
+
+})
+
+defineRequestTypeHandlerPromise('ack', (dest: CrowNest, content: {target: NestName, type: MessageType, content: {content: any, src: NestName}, src: NestName}, src: NestName) => {
+    
+    console.log(dest.name, 'received ack from',  content)
+    return 'OK'
+
+})
+
+function deliverMessage(nest: CrowNest, target: NestName, content: any) {
+    routeRequest(nest, {
+        content: content,
+        src: nest.name,
+        target: target,
+        type: 'message'
+    }).catch(error => console.log('cannot deliver message', error))
+}
+
+function deliverAck(nest: CrowNest, target: NestName) {
+    routeRequest(nest, {
+        content: 'ACK',
+        src: nest.name,
+        target: target,
+        type: 'ack'
+    }).catch(error => console.log('cannot deliver message', error))
+}
+
+false && sendRequest(crowNests.get('A') as CrowNest, 'D', 'route', "from A: Hello D !!")
+
+let msgCount = 0
+setInterval(() => {
+
+    ++msgCount
+    deliverMessage(crowNests.get('A') as CrowNest, 'D', 'coucou D.' + msgCount)
+    deliverMessage(crowNests.get('A') as CrowNest, 'B', 'coucou B.' + msgCount)
+    deliverMessage(crowNests.get('A') as CrowNest, 'E', 'coucou E.' + msgCount)
+    deliverMessage(crowNests.get('A') as CrowNest, 'F', 'coucou F.' + msgCount)
+}, 1000)
