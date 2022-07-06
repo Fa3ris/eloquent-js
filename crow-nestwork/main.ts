@@ -8,6 +8,9 @@ type FoodCache = any;
 type NestName = string;
 type MessageType = 'note' | 'ping' | 'gossip' | 'connections' | 'route' | 'message' | 'ack'
 
+/** 
+ * ce que le noeud destinaire doit faire lorsqu'il reçoit un message
+ */
 type ResponseProducer = (dest: CrowNest, content: any, src: NestName) => any | Promise<any>
 
 type MessageHandlingFinishedHandler = (error: any, value: any) => void
@@ -45,6 +48,20 @@ class CrowNest {
         })
     }
 
+    /**
+     * envoie le message à un voisin direct
+     * 
+     * trouve le messageHandler associé au type de message et l'exécute
+     * 
+     * appelle messageHandlingFinishedHandler une fois que le message a été traité par messageHandler
+     * ou qu'un erreur est survenue
+     * 
+     * @param dest 
+     * @param type 
+     * @param content 
+     * @param messageHandlingFinishedHandler 
+     * @returns 
+     */
     send(dest: NestName, type: MessageType, content: any, messageHandlingFinishedHandler: MessageHandlingFinishedHandler) {
 
         if (!this.neighbors.has(dest)) {
@@ -83,19 +100,22 @@ class CrowNest {
 }
 
 /**
- * @deprecated
- * @param type 
- * @param messageHandler 
+ * definit le messageHandler à utiliser pour un type de message
+ * 
+ * le messageHandler ne fait que transformer la reponse du producer en Promiset et immediatement appeler 
+ * messageHandlingFinishedHandler
+ * @param type le type de message
+ * @param responseProducer
  */
-function defineRequestTypeHandlerCallback(type: MessageType, messageHandler: MessageHandler) {
-    messageHandlers.set(type, messageHandler)
-}
-
 function defineRequestTypeHandlerPromise(type: MessageType, responseProducer: ResponseProducer) {
  
     const messageHandler : MessageHandler = (dest, content, src, messageHandlingFinishedHandler) => {
         false && console.log('handle message for', type)
         try {
+            // quel intérêt ? mettre au même niveau les types de retour de responseProducer 
+            // si responseProducer produit aussi une Promise, retourne cette même Promise
+            // sinon retourne une nouvelle Promise
+            // et permet aussi d'attendre une réponse asynchrone
             Promise.resolve(responseProducer(dest, content, src)).then(
                 response => messageHandlingFinishedHandler(undefined, response),
                 error => messageHandlingFinishedHandler(error, undefined))
@@ -109,7 +129,16 @@ function defineRequestTypeHandlerPromise(type: MessageType, responseProducer: Re
     messageHandlers.set(type, messageHandler)
 }
 
-
+/**
+ * envoie le contenu de nest vers dest
+ * gère le retry
+ * retourne une Promise qui resolve avec la reponse de dest, ou reject avec une erreur
+ * @param nest 
+ * @param dest 
+ * @param type 
+ * @param content 
+ * @returns 
+ */
 function sendRequest(nest: CrowNest, dest: NestName, type: MessageType, content: any): Promise<any> {
     return new Promise((resolve, reject) => {
         let done = false
