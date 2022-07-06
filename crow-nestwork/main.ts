@@ -6,7 +6,7 @@ type CacheName = string;
 type FoodCache = any;
 
 type NestName = string;
-type MessageType = 'note' | 'ping'
+type MessageType = 'note' | 'ping' | 'gossip'
 
 type ResponseProducer = (dest: CrowNest, content: any, src: NestName) => any | Promise<any>
 
@@ -23,6 +23,8 @@ const crowNests = new Map<NestName, CrowNest>()
 class CrowNest {
 
     name: NestName
+
+    gossips: Set<any> = new Set()
     
     neighbors = new Set<NestName>()
 
@@ -64,6 +66,7 @@ class CrowNest {
             return
         }
 
+        // simulate connection here - delay, no connect
         console.log('found message handler for', type)
         messageHandler(targetCrowNest, content, this.name, (error, value) => {
             messageHandlingFinishedHandler(error, value)
@@ -90,7 +93,9 @@ function defineRequestTypeHandlerPromise(type: MessageType, responseProducer: Re
             return
         }
     }
-    defineRequestTypeHandlerCallback(type, messageHandler)
+
+    messageHandlers.set(type, messageHandler)
+    // defineRequestTypeHandlerCallback(type, messageHandler)
 }
 
 
@@ -145,6 +150,7 @@ function sendRequest(nest: CrowNest, dest: NestName, type: MessageType, content:
 defineRequestTypeHandlerPromise('ping', () => "pong")
 
 
+
 const sender =  new CrowNest('A')
 sender.neighbors.add('B')
 
@@ -154,36 +160,40 @@ const cNest = new CrowNest('C')
 
 const dNest = new CrowNest('D')
 
+const eNest = new CrowNest('E')
+
 const nests: {[name: NestName]: CrowNest} = {
     'A' : sender,
     'B' : bNest,
     'C' : cNest,
-    'D' : dNest
+    'D' : dNest,
+    'E' : eNest
 }
 
-for (let name of ['A', 'B', 'C', 'D']) {
-    crowNests.set(name, nests[name])
+const ALL_NEST_NAMES = ['A', 'B', 'C', 'D', 'E']
+for (let name of ALL_NEST_NAMES) {
+    crowNests.set(name, new CrowNest(name))
 }
 
-const connections = ['A-B', 'B-C', 'C-D']
+const connections = ['A-B', 'B-C', 'C-D', 'B-E', 'C-E']
 
 for (let connection of connections) {
     const [nest1, nest2] = connection.split('-')
-    nests[nest1].neighbors.add(nest2)
-    nests[nest2].neighbors.add(nest1)
+    crowNests.get(nest1)?.neighbors.add(nest2)
+    crowNests.get(nest2)?.neighbors.add(nest1)
 }
 
 
 const t0 = performance.now()
 
-if (true)
+if (false)
 sendRequest(sender, 'B', 'ping', undefined).then(response => {
     console.log('ping - delay', performance.now() - t0)
     console.log('ping -', response)
 },
     error => {console.error('ping -', error)})
 
-if (true)
+if (false)
 sendRequest(sender, 'B', 'note', undefined).then(response => {
     console.log('note - delay', performance.now() - t0)
     console.log('note -', response)
@@ -205,22 +215,57 @@ function requestPingTargets(sender: CrowNest, targets: NestName[]) {
     })
 }
 
-requestPingTargets(sender, ['B', 'C', 'D'])
+if (false)
+for (let senderName of ALL_NEST_NAMES) {
+    requestPingTargets(crowNests.get(senderName) as CrowNest, ALL_NEST_NAMES.filter(dest => dest !== senderName))
+}
 
-requestPingTargets(bNest, ['A', 'C', 'D'])
-requestPingTargets(cNest, ['A', 'B', 'D'])
-requestPingTargets(dNest, ['A', 'B', 'C'])
 
-// const pingTargets = ['B', 'C', 'D']
-// const promises: Promise<any>[] = []
-// for (let pingTarget of pingTargets) {
-//     promises.push(sendRequest(sender, pingTarget, 'ping', undefined)
-//         .then(() => true, () => false)
-//     )
-// }
+defineRequestTypeHandlerPromise('gossip', (dest: CrowNest, content: any, src: NestName) => {
 
-// Promise.all(promises).then(results => {
-//     console.log(results.map((value, i) => `${pingTargets[i]} ${value ? 'can be joined' : 'cannot be joined'} by ${sender.name}`
-//     ))
-// })
+    console.log(dest.name, 'GOSSIP - ', content)
 
+    if (dest.gossips.has(content)) {
+        console.log(dest.name, 'ooo')
+        return
+    }
+
+    dest.gossips.add(content)
+
+    for (let neighbor of dest.neighbors) {
+        if (neighbor === src) { 
+            console.log(dest.name, '=x=>', neighbor, '-', content)
+            continue
+         }
+        console.log(dest.name, '===>', neighbor, '-', content)
+        sendRequest(dest, neighbor, 'gossip', content)
+    }
+})
+
+
+function sendGossip(sender: CrowNest, content: any) {
+
+    if (sender.gossips.has(content)) {
+        console.log(sender.name, 'already has gossip')
+        return Promise.resolve("")
+    }
+
+    sender.gossips.add(content)
+
+    const promises = []
+    for (let neighbor of sender.neighbors) {
+        promises.push(sendRequest(sender, neighbor, 'gossip', content))
+    }
+    return Promise.all(promises)
+}
+
+
+sendGossip(crowNests.get('A') as CrowNest, "A is great").then(results => {
+    console.log('flooding finished', results)
+
+    for (let nest of crowNests.values()) {
+        console.log(nest.name, Array.from(nest.gossips.values()))
+    } 
+    
+}, err => {console.error('flooding failed')}
+)
