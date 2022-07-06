@@ -335,7 +335,66 @@ function printConnectionsRepeat(interval = 1000) {
         for (let nest of crowNests.values()) {
             console.log(nest.name, Array.from(nest.connections.entries()).map(entry => {return { node: entry[0], neighbors: Array.from(entry[1].neighbors.values())}}))
         } 
+
+
+        const origin = crowNests.get('B') as CrowNest
+        for (let target of ALL_NEST_NAMES) {
+            try {
+                process.stdout.write(`GATEWAY ${origin.name} -> ${target}: ${findGateway(origin, target)} \n`);
+            } catch (e) {
+    
+            }
+        }
     }, interval);
 }
 
 printConnectionsRepeat()
+
+
+function findGateway(nest: CrowNest, target: NestName): NestName {
+    const visited: Set<NestName> = new Set();
+    const queue: {nest : NestName, gateway: NestName}[] = []
+
+    if (nest.name === target) { return target }
+
+    // check direct neighbor
+    if (nest.neighbors.has(target)) {
+        return target
+    }
+
+    visited.add(nest.name);
+
+    // enqueue neighbors with gateway == neighbor
+    for (let neighbor of nest.neighbors) {
+        queue.push({nest: neighbor, gateway: neighbor})
+    }
+
+    while (queue.length > 0) {
+
+        const dequeued = queue.shift()
+        if (!dequeued) {
+            console.error("queue is empty")
+            throw 'no gateway found for target ' + target
+        }
+
+        if (dequeued.nest === target) {
+            return dequeued.gateway as NestName
+        }
+
+        const neighbors = nest.connections.get(dequeued.nest)?.neighbors
+
+        if (!neighbors) {
+            console.log("dead end at", dequeued.nest)
+            continue
+        }
+
+        for (let neighbor of neighbors) {
+            if (visited.has(neighbor)) {
+                continue
+            }
+            visited.add(neighbor)
+            queue.push({nest: neighbor, gateway: dequeued.gateway})
+        }
+    }
+    throw `no path found from ${nest.name} to ${target}`
+}
