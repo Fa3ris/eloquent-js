@@ -6,7 +6,9 @@ type CacheName = string;
 type FoodCache = any;
 
 type NestName = string;
-type MessageType = 'note' | 'ping' | 'gossip' | 'connections' | 'route' | 'message' | 'ack'
+type MessageType = 'note' | 'ping' | 'gossip' | 'connections' | 'route' | 'message' | 'ack' | 'storageQuery' | 'storageResponse'
+
+
 
 /** 
  * ce que le noeud destinaire doit faire lorsqu'il reçoit un message
@@ -17,6 +19,7 @@ type MessageHandlingFinishedHandler = (error: any, value: any) => void
 
 type MessageHandler = (dest: CrowNest, content: any, src: NestName, messageHandlingFinishedHandler: MessageHandlingFinishedHandler) => void
 
+type NestStorage = Map<string, string>
 
 const messageHandlers = new Map<MessageType, MessageHandler>()
 const crowNests = new Map<NestName, CrowNest>()
@@ -28,6 +31,8 @@ class CrowNest {
     name: NestName
 
     gossips: Set<any> = new Set()
+
+    storage: NestStorage;
     
     neighbors = new Set<NestName>()
 
@@ -35,16 +40,19 @@ class CrowNest {
 
     constructor(name: NestName) {
         this.name = name
+        this.storage = createStorageForNest(name)
     }
 
-    readStorageCallback(name: CacheName, callback: (cache: FoodCache) => void) {
-
-        setTimeout(() => callback('toto'), 20)
+    private _readStorageCallback(key: string, callback: (entry: string | undefined) => void) {
+        setTimeout(() => callback(this.storage.get(key)), 20)
     }
 
-    readStoragePromise(name: CacheName): Promise<FoodCache> {
+    readStoragePromise(key: string): Promise<string> {
         return new Promise((resolve, reject) => {
-            this.readStorageCallback(name, (cache) => resolve(cache))
+            this._readStorageCallback(key, (entry) => { 
+                if (entry) resolve(entry)
+                else reject("no entry found for key " + key)
+            })
         })
     }
 
@@ -102,7 +110,7 @@ class CrowNest {
 /**
  * definit le messageHandler à utiliser pour un type de message
  * 
- * le messageHandler ne fait que transformer la reponse du producer en Promiset et immediatement appeler 
+ * le messageHandler ne fait que transformer la reponse du producer en Promise et immediatement appeler 
  * messageHandlingFinishedHandler
  * @param type le type de message
  * @param responseProducer
@@ -489,7 +497,7 @@ function deliverAck(nest: CrowNest, target: NestName) {
 false && sendRequest(crowNests.get('A') as CrowNest, 'D', 'route', "from A: Hello D !!")
 
 let msgCount = 0
-setInterval(() => {
+false && setInterval(() => {
 
     ++msgCount
     deliverMessage(crowNests.get('A') as CrowNest, 'D', 'coucou D.' + msgCount)
@@ -497,3 +505,81 @@ setInterval(() => {
     deliverMessage(crowNests.get('A') as CrowNest, 'E', 'coucou E.' + msgCount)
     deliverMessage(crowNests.get('A') as CrowNest, 'F', 'coucou F.' + msgCount)
 }, 1000)
+
+
+function createStorageForNest(nest: NestName): NestStorage {
+    const storage: NestStorage = new Map()
+
+    storage.set("food caches", JSON.stringify(["cache in the oak", "cache in the meadow", "cache under the hedge"]))
+    storage.set("cache in the oak", JSON.stringify("A hollow above the third big branch from the bottom. Several pieces of bread and a pile of acorns."))
+    storage.set("cache in the meadow",  JSON.stringify("Buried below the patch of nettles (south side). A dead snake."))
+    storage.set("cache under the hedge", JSON.stringify("Middle of the hedge at Gilles' garden. Marked with a forked twig. Two bottles of beer."))
+    storage.set("enemies", JSON.stringify(["Farmer Jacques' dog", "The butcher", "That one-legged jackdaw", "The boy with the airgun"]))
+
+
+    if (nest === 'D') {
+        storage.set('treasure', JSON.stringify('Laugh Tale'))
+    }
+
+    return storage
+}
+
+async function findInStorage(nest: CrowNest, key: string, alreadyChecked: Set<NestName>, origin: NestName): Promise<string | undefined> {
+
+    // local entry
+    console.log('find in storage', nest.name, key, alreadyChecked)
+    try {
+        const entry = await nest.readStoragePromise(key)
+        routeRequest(nest, {
+            content: {
+                key,
+                entry
+            },
+            src: nest.name,
+            target: origin,
+            type: 'storageResponse'
+        }).catch(error => console.log('cannot deliver message', error))
+        return entry
+    } catch (error) {
+        
+    }
+
+    console.log('find in remote storage', nest.name, key, nest.neighbors)
+
+    alreadyChecked.add(nest.name)
+    for (let neighbor of nest.connections.keys()) {
+        if (alreadyChecked.has(neighbor)) {
+            console.log('skip', neighbor)
+            continue
+        }
+        alreadyChecked.add(neighbor)
+        try {
+            const entry = await routeRequest(nest, {
+                content: {key, alreadyChecked, origin},
+                src: nest.name,
+                target: neighbor,
+                type: 'storageQuery'
+            })
+            return entry
+        } catch (error) {
+            console.log('error routing storage query')
+        }
+    }
+
+    throw `entry for key ${key} not found : ${nest.name}`
+}
+
+defineRequestTypeHandlerPromise('storageQuery', (dest: CrowNest, content: {content: {key: string, alreadyChecked: Set<NestName>, origin: NestName}, src: NestName}, src: NestName) => {
+    
+    console.log(dest.name, 'storage query for', content)
+    findInStorage(dest, content.content.key, content.content.alreadyChecked, content.content.origin)
+})
+
+defineRequestTypeHandlerPromise('storageResponse', (dest: CrowNest, content: {content: {key: string, entry: string}, src: NestName}, src: NestName) => {
+    
+    console.log(dest.name, 'received storage response', {key: content.content.key, entry: content.content.entry})
+})
+
+
+findInStorage(crowNests.get('A') as CrowNest, 'treasure', new Set(['A']), 'A').catch(error => console.error(error))
+findInStorage(crowNests.get('B') as CrowNest, 'treasure', new Set(['B']), 'B').catch(error => console.error(error))
