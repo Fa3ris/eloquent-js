@@ -69,12 +69,19 @@ class CrowNest {
         // simulate connection here - delay, no connect
         console.log('found message handler for', type)
         messageHandler(targetCrowNest, content, this.name, (error, value) => {
-            messageHandlingFinishedHandler(error, value)
+            setTimeout(() => {
+                messageHandlingFinishedHandler(error, value)
+            }, 250 + (-250 + (Math.random() * 260)))
         });
 
     }
 }
 
+/**
+ * @deprecated
+ * @param type 
+ * @param messageHandler 
+ */
 function defineRequestTypeHandlerCallback(type: MessageType, messageHandler: MessageHandler) {
     messageHandlers.set(type, messageHandler)
 }
@@ -95,7 +102,6 @@ function defineRequestTypeHandlerPromise(type: MessageType, responseProducer: Re
     }
 
     messageHandlers.set(type, messageHandler)
-    // defineRequestTypeHandlerCallback(type, messageHandler)
 }
 
 
@@ -238,7 +244,7 @@ defineRequestTypeHandlerPromise('gossip', (dest: CrowNest, content: any, src: Ne
             continue
          }
         console.log(dest.name, '===>', neighbor, '-', content)
-        sendRequest(dest, neighbor, 'gossip', content)
+        sendRequest(dest, neighbor, 'gossip', content).catch(err => console.error('flooding failed', err.message))
     }
 })
 
@@ -267,5 +273,4 @@ sendGossip(crowNests.get('A') as CrowNest, "A is great").then(results => {
         console.log(nest.name, Array.from(nest.gossips.values()))
     } 
     
-}, err => {console.error('flooding failed')}
-)
+}, err => {console.error('flooding failed', err)})
