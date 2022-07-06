@@ -6,7 +6,7 @@ type CacheName = string;
 type FoodCache = any;
 
 type NestName = string;
-type MessageType = 'note' | 'ping' | 'gossip'
+type MessageType = 'note' | 'ping' | 'gossip' | 'connections'
 
 type ResponseProducer = (dest: CrowNest, content: any, src: NestName) => any | Promise<any>
 
@@ -27,6 +27,8 @@ class CrowNest {
     gossips: Set<any> = new Set()
     
     neighbors = new Set<NestName>()
+
+    connections = new Map<NestName, {neighbors: Set<NestName>, date: number}>()
 
     constructor(name: NestName) {
         this.name = name
@@ -67,11 +69,14 @@ class CrowNest {
         }
 
         // simulate connection here - delay, no connect
-        console.log('found message handler for', type)
+        false && console.log('found message handler for', type)
         messageHandler(targetCrowNest, content, this.name, (error, value) => {
+            if (false)
             setTimeout(() => {
                 messageHandlingFinishedHandler(error, value)
             }, 250 + (-250 + (Math.random() * 260)))
+
+            messageHandlingFinishedHandler(error, value)
         });
 
     }
@@ -89,7 +94,7 @@ function defineRequestTypeHandlerCallback(type: MessageType, messageHandler: Mes
 function defineRequestTypeHandlerPromise(type: MessageType, responseProducer: ResponseProducer) {
  
     const messageHandler : MessageHandler = (dest, content, src, messageHandlingFinishedHandler) => {
-        console.log('handle message for', type)
+        false && console.log('handle message for', type)
         try {
             Promise.resolve(responseProducer(dest, content, src)).then(
                 response => messageHandlingFinishedHandler(undefined, response),
@@ -266,6 +271,7 @@ function sendGossip(sender: CrowNest, content: any) {
 }
 
 
+if (false)
 sendGossip(crowNests.get('A') as CrowNest, "A is great").then(results => {
     console.log('flooding finished', results)
 
@@ -274,3 +280,62 @@ sendGossip(crowNests.get('A') as CrowNest, "A is great").then(results => {
     } 
     
 }, err => {console.error('flooding failed', err)})
+
+
+/**
+ * propagate connections info of sender to all reachable nodes 
+ * @param sender 
+ */
+function broadcastConnections(sender: CrowNest) {
+    console.log(sender.neighbors)
+    for (let neighbor of sender.neighbors) {
+        sendRequest(sender, neighbor, 'connections', {
+            name: sender.name,
+            neighbors: new Set(sender.neighbors),
+            date: performance.now()
+        })
+    }
+}
+
+defineRequestTypeHandlerPromise('connections', (dest: CrowNest, content: {name: NestName, neighbors: Set<NestName>, date: number}, src: NestName) => {
+
+    console.log(dest.name, 'CONNECTIONS - ', content.name)
+
+    const currentConnectionsInfo = dest.connections.get(content.name)
+
+    // if info received has been emitted by dest or already has same or fresher connection info
+    if (content.name === dest.name || (currentConnectionsInfo && currentConnectionsInfo.date >= content.date)) {
+        console.log(dest.name, "STOP PROPAGATION", content.name)
+        return
+    }
+
+    dest.connections.set(content.name, {neighbors: content.neighbors, date: content.date})
+
+    for (let neighbor of dest.neighbors) {
+        if (neighbor === src) { 
+            console.log(dest.name, 'XXX', neighbor, '-', content.name)
+            continue
+         }
+         console.log(dest.name, "[[[", neighbor)
+        sendRequest(dest, neighbor, 'connections', content)
+    }
+})
+
+
+
+
+for (let nest of crowNests.values()) {
+    broadcastConnections(nest)
+}
+
+function printConnectionsRepeat(interval = 1000) {
+   
+    setInterval(() => {
+        console.log("connectionsInfos")
+        for (let nest of crowNests.values()) {
+            console.log(nest.name, Array.from(nest.connections.entries()).map(entry => {return { node: entry[0], neighbors: Array.from(entry[1].neighbors.values())}}))
+        } 
+    }, interval);
+}
+
+printConnectionsRepeat()
