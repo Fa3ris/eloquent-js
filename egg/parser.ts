@@ -1,6 +1,6 @@
-import exp from "constants";
 
 console.log('🥚 EGG programming language 🐣')
+
 
 /* 
     Syntax
@@ -46,34 +46,83 @@ type ExpressionType =
     | 'apply' 
 ;
 
-type Expression = any
+type Expression = ValueExpression | ApplyExpression | WordExpression
 
-function parseExpression(program: string): Expression {
+
+type BaseExpression = {
+    type: ExpressionType
+}
+
+type ValueExpression = BaseExpression & {
+    type : 'value'
+    value: string | number
+}
+
+type WordExpression = BaseExpression & {
+    type : 'word'
+    value: string
+}
+
+type ApplyExpression = BaseExpression & {
+    type : 'apply'
+    operator: string,
+    args: Expression[]
+}
+
+function parseExpression(program: string): Expression | ApplyExpression | void {
     // remove white space, \t, \n
     program = program.trimStart()
 
+    let {expression, program: programLeft} = nextExpression(program)
+
+    programLeft = programLeft.trimStart()
+
+    if (expression.type === 'word' && programLeft[0] === '(') {
+        return parseApplyExpression(expression, programLeft.substring(1))
+    } else {
+        return expression
+    }
+
 }
 
+
+function parseApplyExpression(expression: WordExpression, programLeft: string): ApplyExpression | void {
+
+    const applyExpression: ApplyExpression = {
+        type: 'apply',
+        operator: expression.value,
+        args: []
+    }
+
+
+    return applyExpression
+}
 
 const stringLiteralRegex = /^"([^"\n\r]*)"/
 const numberLiteralRegex = /^\d+/
 const identifierRegex = /^[^\s(),#"]+/
 
-function nextExpression(program: string): Expression {
+function nextExpression(program: string): {expression: Expression, program: string} {
     // remove white space, \t, \n
     program = program.trimStart()
 
     let match;
-
+    let expr: Expression;
+    let lengthParsed: number
     if (match = stringLiteralRegex.exec(program)) {
-        return {type: 'value', value: match[1] }
+        expr = {type: 'value', value: match[1] }
+        lengthParsed = match[1].length + 2
     } else if (match = numberLiteralRegex.exec(program)) {
-        return {type: 'value', value: Number(match[0])}
+        expr = {type: 'value', value: Number(match[0])}
+        lengthParsed = match[0].length
     } else if (match = identifierRegex.exec(program)) {
-        return {type: 'word', value: match[0]}
+        expr = {type: 'word', value: match[0]}
+        lengthParsed = match[0].length
     } else {
         throw new SyntaxError("invalid syntax " + program);
     }
+
+    return { expression: expr, program: program.slice(lengthParsed) }
 }
 
 
