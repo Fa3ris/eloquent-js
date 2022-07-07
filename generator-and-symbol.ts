@@ -207,3 +207,45 @@ for (let value of updatingGroup) {
     if (val < 500)
     updatingGroup.add(val++)
 }
+
+
+process.stdout.write(
+`*****************************************
+                GENERATOR
+*****************************************\n\n
+`)
+
+function* heroes(): Generator<string> {
+    
+    yield 'all might'
+    yield 'luffy'
+    // implicit return
+}
+
+const gen = heroes()
+
+
+console.log(gen.next())
+console.log(gen.next())
+console.log(gen.next())
+
+class HeroesDB implements Iterable<string> {
+
+    private _values = ['toto', 'titi', 'law', 'zoro'];
+
+    [Symbol.iterator](): Generator<string> {
+
+        return this.generator()
+    }
+
+    private *generator(): Generator<string> {
+        for (let v of this._values) {
+            yield v
+        }
+    }
+
+}
+for (let h of new HeroesDB()) {
+
+    console.log(h)
+}
