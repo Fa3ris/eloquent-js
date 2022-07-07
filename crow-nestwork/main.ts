@@ -38,6 +38,8 @@ class CrowNest {
 
     connections = new Map<NestName, {neighbors: Set<NestName>, date: number}>()
 
+    chicksInfos = new Map<number, Map<NestName, number>>()
+
     constructor(name: NestName) {
         this.name = name
         this.storage = createStorageForNest(name)
@@ -521,7 +523,23 @@ function createStorageForNest(nest: NestName): NestStorage {
         storage.set('treasure', JSON.stringify('Laugh Tale'))
     }
 
+    for (let year = 1970; year <= 2022; year++) {
+        storage.set(`chicks-${year}`, JSON.stringify(computeChicksEntry(nest, year)))
+    }
+
     return storage
+}
+
+function computeChicksEntry(nest: NestName, year: number): number {
+
+    let hash = 0
+
+    for (let i = 0; i < nest.length; i++) {
+        hash += nest.charCodeAt(i)
+    }
+
+    hash = Math.abs((hash << 2) ^ (hash + year))
+    return hash % 6
 }
 
 async function findInStorage(nest: CrowNest, key: string, alreadyChecked: Set<NestName>, origin: NestName): Promise<string | undefined> {
@@ -533,7 +551,8 @@ async function findInStorage(nest: CrowNest, key: string, alreadyChecked: Set<Ne
         routeRequest(nest, {
             content: {
                 key,
-                entry
+                entry,
+                src: nest.name
             },
             src: nest.name,
             target: origin,
@@ -569,17 +588,86 @@ async function findInStorage(nest: CrowNest, key: string, alreadyChecked: Set<Ne
     throw `entry for key ${key} not found : ${nest.name}`
 }
 
+async function allChicks(nest: CrowNest, year: number) {
+    const values = new Map<NestName, number>();
+
+    const key = `chicks-${year}`
+    const entry = await nest.readStoragePromise(key)
+    values.set(nest.name, Number(entry))
+    for (let connection of nest.connections.keys()) {
+        const entry = await routeRequest(nest, {
+            content: {key, alreadyChecked: new Set([nest.name]), origin: nest.name},
+            src: nest.name,
+            target: connection,
+            type: 'storageQuery'
+        })
+
+        console.log('remote chick', connection, entry)
+        values.set(connection, Number(entry))
+    }
+
+    console.log('chicks', key, values)
+}
+
 defineRequestTypeHandlerPromise('storageQuery', (dest: CrowNest, content: {content: {key: string, alreadyChecked: Set<NestName>, origin: NestName}, src: NestName}, src: NestName) => {
     
     console.log(dest.name, 'storage query for', content)
-    findInStorage(dest, content.content.key, content.content.alreadyChecked, content.content.origin)
+    const entryPromise = findInStorage(dest, content.content.key, content.content.alreadyChecked, content.content.origin)
+
+    entryPromise.then((entry) => {
+
+        console.log(dest.name, 'route response to', content.content.origin)
+        routeRequest(dest, {
+            content: {
+                key: content.content.key,
+                entry,
+                src: dest.name
+            },
+            src: dest.name,
+            target: content.content.origin,
+            type: 'storageResponse'
+        }).catch(error => console.log('cannot deliver message', error))
+    })
+    return entryPromise
 })
 
-defineRequestTypeHandlerPromise('storageResponse', (dest: CrowNest, content: {content: {key: string, entry: string}, src: NestName}, src: NestName) => {
+defineRequestTypeHandlerPromise('storageResponse', (dest: CrowNest, content: {content: {key: string, entry: string, src: NestName}, src: NestName}, src: NestName) => {
     
-    console.log(dest.name, 'received storage response', {key: content.content.key, entry: content.content.entry})
+    console.log(dest.name, 'received storage response', {key: content.content.key, entry: content.content.entry}, 'from', content.content.src)
+
+    const [part1, part2] = content.content.key.split('-')
+
+    if (part1 === 'chicks') {
+        const year = Number(part2)
+
+        let map = dest.chicksInfos.get(year)
+
+        if (!map) 
+        map = new Map()
+        dest.chicksInfos.set(year, map)
+
+        if (!content.content.src)
+            debugger
+        map.set(content.content.src, Number(content.content.entry))
+        console.log('chicks info for year', year, dest.chicksInfos.get(year))
+    }
+
+
 })
 
 
 findInStorage(crowNests.get('A') as CrowNest, 'treasure', new Set(['A']), 'A').catch(error => console.error(error))
 findInStorage(crowNests.get('B') as CrowNest, 'treasure', new Set(['B']), 'B').catch(error => console.error(error))
+
+
+setInterval(() => {
+    console.log("storageInfos")
+    const key = 'chicks-2014';
+    if (false) for (let nest of crowNests.values()) {
+        console.log(nest.name, key, nest.storage.get(key))
+    } 
+
+    false && findInStorage(crowNests.get('B') as CrowNest, 'treasure', new Set(['B']), 'B').catch(error => console.error(error))
+
+    allChicks(crowNests.get('B') as CrowNest, 2014)
+}, 1000);
