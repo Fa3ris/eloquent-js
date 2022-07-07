@@ -65,20 +65,60 @@ type WordExpression = BaseExpression & {
 
 type ApplyExpression = BaseExpression & {
     type : 'apply'
-    operator: string,
+    operator: Expression,
     args: Expression[]
 }
 
-function parseExpression(program: string): Expression | ApplyExpression | void {
+
+/**
+ * manipulate the string content of the program
+ * and avoid returning the updated string from function call
+ * because cannot pass string content by reference
+ */
+class Program {
+    content: string
+
+    constructor(content: string) {
+        this.content = content
+    }
+
+     /**
+     * remove white space, \t, \n
+    */
+    skipWhiteSpace(): Program {
+        this.content = this.content.trimStart()
+        return this
+    }
+
+    discardChar(n: number): Program {
+        this.content = this.content.substring(n)
+        return this
+    }
+
+    toString() {
+        return this.content
+    }
+
+    toNextChar() {
+        this.content = this.content.trimStart()
+        return this
+    }
+
+    get nextChar(): string {
+        return this.content.charAt(0)
+    }
+}
+
+function parseExpression(program: Program): Expression | ApplyExpression {
     // remove white space, \t, \n
-    program = program.trimStart()
+    program.skipWhiteSpace()
 
-    let {expression, program: programLeft} = nextExpression(program)
+    const expression = nextExpression(program)
 
-    programLeft = programLeft.trimStart()
+    program.skipWhiteSpace()
 
-    if (expression.type === 'word' && programLeft[0] === '(') {
-        return parseApplyExpression(expression, programLeft.substring(1))
+    if (expression.type === 'word' && program.nextChar === '(') { // foo( ...
+        return parseApplyExpression(expression, program.discardChar(1))
     } else {
         return expression
     }
@@ -86,55 +126,78 @@ function parseExpression(program: string): Expression | ApplyExpression | void {
 }
 
 
-function parseApplyExpression(expression: WordExpression, programLeft: string): ApplyExpression | void {
+function parseApplyExpression(expression: WordExpression | ApplyExpression, program: Program): ApplyExpression {
 
     const applyExpression: ApplyExpression = {
         type: 'apply',
-        operator: expression.value,
+        operator: expression,
         args: []
     }
 
+    while (program.nextChar !== ')') {
 
-    return applyExpression
+        program.skipWhiteSpace()
+        applyExpression.args.push(parseExpression(program))
+
+        if (program.nextChar === ',') { // next argument
+            program.discardChar(1)
+        } else if (program.nextChar !== ')') { // expected end of arguments
+            throw new SyntaxError("expected ',' or ')' but got " + program.nextChar);   
+        }
+    }
+
+    // change reference to indicate to TS that getter nextChar has changed and does not === ')' - while loop exit
+    program = program.discardChar(1)
+    program.skipWhiteSpace()
+
+    if (program.nextChar === '(') {
+        // an apply expression can itself be applied
+        // foo(1)(6)
+        return parseApplyExpression(applyExpression, program.discardChar(1))
+    } else {
+        return applyExpression
+    }
 }
 
-const stringLiteralRegex = /^"([^"\n\r]*)"/
+const stringLiteralRegex = /^"([^"\n\r]*)"/ // [^...] = tout sauf ...
 const numberLiteralRegex = /^\d+/
 const identifierRegex = /^[^\s(),#"]+/
 
-function nextExpression(program: string): {expression: Expression, program: string} {
-    // remove white space, \t, \n
-    program = program.trimStart()
+function nextExpression(program: Program): Expression {
+
+    program.skipWhiteSpace()
 
     let match;
     let expr: Expression;
     let lengthParsed: number
-    if (match = stringLiteralRegex.exec(program)) {
+    if (match = stringLiteralRegex.exec(program.content)) {
         expr = {type: 'value', value: match[1] }
         lengthParsed = match[1].length + 2
-    } else if (match = numberLiteralRegex.exec(program)) {
+    } else if (match = numberLiteralRegex.exec(program.content)) {
         expr = {type: 'value', value: Number(match[0])}
         lengthParsed = match[0].length
-    } else if (match = identifierRegex.exec(program)) {
+    } else if (match = identifierRegex.exec(program.content)) {
         expr = {type: 'word', value: match[0]}
         lengthParsed = match[0].length
     } else {
         throw new SyntaxError("invalid syntax " + program);
     }
 
-    return { expression: expr, program: program.slice(lengthParsed) }
+    program.discardChar(lengthParsed)
+    return expr
 }
 
 
 // ----- TEST ------
 
-for (let p of ['do', '123', '"hello"', '"hello"    ', '"fefefe' ]) {
+for (let p of ['do', '123', '"hello"', '"hello"    ', '"fefefe', "      \nhola" ]) {
     printExpression(p)
 }
 
 function printExpression(s: string) {
+
     try {
-        console.log(nextExpression(s))
+        console.log(nextExpression(new Program(s)))
     } catch (err) {
         console.error((err as SyntaxError).message)
     }
