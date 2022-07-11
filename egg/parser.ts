@@ -77,6 +77,7 @@ type ApplyExpression = BaseExpression & {
  */
 class Program {
     content: string
+    
 
     constructor(content: string) {
         this.content = content
@@ -92,6 +93,7 @@ class Program {
 
     discardChar(n: number): Program {
         this.content = this.content.substring(n)
+        this.content = this.content.trimStart()
         return this
     }
 
@@ -107,18 +109,35 @@ class Program {
     get nextChar(): string {
         return this.content.charAt(0)
     }
+
+    get eof(): boolean {
+        return this.content.length === 0   
+    }
 }
 
 function parseExpression(program: Program): Expression | ApplyExpression {
-    // remove white space, \t, \n
-    program.skipWhiteSpace()
+    program.toNextChar()
 
-    const expression = nextExpression(program)
+    let match;
+    let expression: Expression;
+    let lengthParsed: number
+    if (match = stringLiteralRegex.exec(program.content)) {
+        expression = {type: 'value', value: match[1] }
+        lengthParsed = match[1].length + 2 // content + 2 double-quote
+    } else if (match = numberLiteralRegex.exec(program.content)) {
+        expression = {type: 'value', value: Number(match[0])}
+        lengthParsed = match[0].length
+    } else if (match = identifierRegex.exec(program.content)) {
+        expression = {type: 'word', value: match[0]}
+        lengthParsed = match[0].length
+    } else {
+        throw new SyntaxError("invalid syntax " + program);
+    }
 
-    program.skipWhiteSpace()
+    program.discardChar(lengthParsed)
 
-    if (expression.type === 'word' && program.nextChar === '(') { // foo( ...
-        return parseApplyExpression(expression, program.discardChar(1))
+    if (expression.type === 'word' && program.nextChar === '(') { // foo( ... | foo ( ...
+        return parseApplyExpression(expression, program.discardChar(1)) // discard '('
     } else {
         return expression
     }
@@ -133,22 +152,21 @@ function parseApplyExpression(expression: WordExpression | ApplyExpression, prog
         operator: expression,
         args: []
     }
+    
+    // already at non blank char when arriving here
+    while (program.nextChar !== ')') { // end of arguments
 
-    while (program.nextChar !== ')') {
-
-        program.skipWhiteSpace()
         applyExpression.args.push(parseExpression(program))
 
         if (program.nextChar === ',') { // next argument
-            program.discardChar(1)
+            program.discardChar(1) // discard ','
         } else if (program.nextChar !== ')') { // expected end of arguments
             throw new SyntaxError("expected ',' or ')' but got " + program.nextChar);   
         }
     }
 
-    // change reference to indicate to TS that getter nextChar has changed and does not === ')' - while loop exit
-    program = program.discardChar(1)
-    program.skipWhiteSpace()
+    // change reference to indicate to TS that getter nextChar has changed and does not === ')' - while loop exit condition
+    program = program.discardChar(1) // discard ')'
 
     if (program.nextChar === '(') {
         // an apply expression can itself be applied
@@ -159,20 +177,31 @@ function parseApplyExpression(expression: WordExpression | ApplyExpression, prog
     }
 }
 
+function parse(content: string): Expression {
+    const program = new Program(content);
+    const expression = parseExpression(program)
+    
+    program.toNextChar();
+    if (!program.eof) {
+        throw new SyntaxError("text remain after parsing");
+    }
+    return expression
+}
+
 const stringLiteralRegex = /^"([^"\n\r]*)"/ // [^...] = tout sauf ...
-const numberLiteralRegex = /^\d+/
+const numberLiteralRegex = /^-?\d+/
 const identifierRegex = /^[^\s(),#"]+/
 
 function nextExpression(program: Program): Expression {
 
-    program.skipWhiteSpace()
+    program.toNextChar()
 
     let match;
     let expr: Expression;
     let lengthParsed: number
     if (match = stringLiteralRegex.exec(program.content)) {
         expr = {type: 'value', value: match[1] }
-        lengthParsed = match[1].length + 2
+        lengthParsed = match[1].length + 2 // content + 2 double-quote
     } else if (match = numberLiteralRegex.exec(program.content)) {
         expr = {type: 'value', value: Number(match[0])}
         lengthParsed = match[0].length
@@ -190,14 +219,39 @@ function nextExpression(program: Program): Expression {
 
 // ----- TEST ------
 
-for (let p of ['do', '123', '"hello"', '"hello"    ', '"fefefe', "      \nhola" ]) {
-    printExpression(p)
+for (let p of ['do', '123', '"hello"', '"hello"    ', '"fefefe', "      \nhola", "+(a, 10)",
+`  * ( b ,   100 )  `, 
+
+`  - 
+( 
+    c 
+    ,
+       -20 )  
+       
+       
+       `,
+
+'>(x, 5)',
+
+'+(x, 5)(0)'
+ ]) {
+    // printExpression(p)
+    printParse(p)
 }
 
 function printExpression(s: string) {
 
     try {
         console.log(nextExpression(new Program(s)))
+    } catch (err) {
+        console.error((err as SyntaxError).message)
+    }
+}
+
+function printParse(s: string) {
+    try {
+        const exp = parse(s);
+        console.log(JSON.stringify(exp, undefined, 1))
     } catch (err) {
         console.error((err as SyntaxError).message)
     }
