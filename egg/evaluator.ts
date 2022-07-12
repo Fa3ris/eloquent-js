@@ -227,3 +227,11 @@ do(define(f, fun(a, fun(b, +(a, b)))),
     }
 }
 
+
+console.log(parse("# hello\nx"));
+// → { type: 'word', value: 'x' }
+
+console.log(parse("a # one\n   # two\n()"));
+// → {type: "apply",
+//    operator: {type: "word", name: "a"},
+//    args: []}

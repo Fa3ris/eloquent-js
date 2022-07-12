@@ -92,7 +92,7 @@ class Program {
 
     discardChar(n: number): Program {
         this.content = this.content.substring(n)
-        this.content = this.content.trimStart()
+        this.toNextChar()
         return this
     }
 
@@ -102,6 +102,12 @@ class Program {
 
     toNextChar() {
         this.content = this.content.trimStart()
+        // if current char = #, go to next line and skip some more
+        while (this.nextChar === '#') {
+            const lineTerminator = this.content.indexOf('\n')
+            this.content = this.content.substring(lineTerminator)
+            this.content = this.content.trimStart()
+        }
         return this
     }
 
