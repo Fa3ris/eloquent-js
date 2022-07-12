@@ -146,7 +146,7 @@ for (let operation of ['+', '-', '*', '/', '==', "<", ">"]) {
 topScope['print'] = (a: any) => { console.log(a); return a }
 
 topScope['array'] = (...values: any[]) => {
-    return new Array(...values)
+    return values
 }
 
 topScope['length'] = (array: any[]) => { return array.length }
