@@ -34,6 +34,7 @@ keywordFunctions['if'] = (args: Expression[], scope: Scope) => {
         return evaluateExpression(args[2], scope)
     }
 }
+
 keywordFunctions['while'] = (args: Expression[], scope: Scope) => {
     if (!args || args.length != 2) { throw SyntaxError("'while' expression requires 2 arguments but got " + (args? args.length : 0)) }
     
@@ -92,6 +93,28 @@ keywordFunctions['define'] = (args: Expression[], scope: Scope) => {
     }
 
     return funDef
+ }
+
+ keywordFunctions['set'] = (args: Expression[], scope: Scope) => {
+
+    if (args.length != 2 || args[0].type != 'word') {
+        throw new SyntaxError("'set' requires 2 args but got " + args.length)
+    }
+
+
+    let parentProto = Object.getPrototypeOf(scope)
+    while (parentProto != null) {
+        if (parentProto.hasOwnProperty(args[0].value)) {
+            console.log(args[0].value, 'found in proto', parentProto)
+            const value = evaluateExpression(args[1], scope)
+            parentProto[args[0].value] = value
+            return value
+        }
+        parentProto = Object.getPrototypeOf(parentProto) 
+    }    
+
+    throw new ReferenceError(`${args[0].value} is not defined in parent scope`)
+
  }
 
 
@@ -216,14 +239,44 @@ do(define(sum, fun(arr,
 `
 do(define(f, fun(a, fun(b, +(a, b)))),
    print(f(4)(5)))
-` // 9
+`, // 9
+`
+do(define(x, 4),
+   define(setx, fun(val, set(x, val))),
+   setx(50),
+   print(x))
+`, // 50
+`set(quux, true)`,
+
+`
+do(define(y, 10),
+    do(define(x, 4),
+        define(setx, fun(val, set(x, val))),
+        define(sety, fun(val,
+            do( 
+                define(setXY, fun(x, y, 
+                    do(
+                        setx(x),
+                        sety(y)
+                    ))),
+                set(y, val),
+                setXY(25, 89)
+            )
+        )
+        ),
+        setx(50),
+        sety(100),
+        print(x),
+        print(y))
+)
+`
 ]) {
 
     console.log('evaluate expression ' + p.replace(/(?:\r\n|\r|\n|\s{2,})/g, ''))
     try {
         console.dir(evaluate(p), {depth: null})
     } catch (err) {
-        console.trace((err as SyntaxError).message)
+        console.error((err as SyntaxError).message)
     }
 }
 
