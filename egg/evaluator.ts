@@ -144,6 +144,15 @@ for (let operation of ['+', '-', '*', '/', '==', "<", ">"]) {
 }
 
 topScope['print'] = (a: any) => { console.log(a); return a }
+
+topScope['array'] = (...values: any[]) => {
+    return new Array(...values)
+}
+
+topScope['length'] = (array: any[]) => { return array.length }
+
+topScope['element'] = (array: any[], i: number) => { return array[i] }
+
 Object.freeze(topScope)
 
 
@@ -190,14 +199,26 @@ do(define(pow, fun(base, exp,
         1,
         *(base, pow(base, -(exp, 1)))))),
    print(pow(2, 10)))
-` // 1024
+`, // 1024
+
+// cannot use keyword 'array'
+`
+do(define(sum, fun(arr,
+     do(define(i, 0),
+        define(sum, 0),
+        while(<(i, length(arr)),
+          do(define(sum, +(sum, element(arr, i))),
+             define(i, +(i, 1)))),
+        sum))),
+   print(sum(array(1, 2, 3))))
+` // 6
 ]) {
 
     console.log('evaluate expression ' + p.replace(/(?:\r\n|\r|\n|\s{2,})/g, ''))
     try {
         console.dir(evaluate(p), {depth: null})
     } catch (err) {
-        console.error((err as SyntaxError).message)
+        console.trace((err as SyntaxError).message)
     }
 }
 
