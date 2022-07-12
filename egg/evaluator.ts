@@ -64,6 +64,39 @@ keywordFunctions['define'] = (args: Expression[], scope: Scope) => {
     return value
  }
 
+ keywordFunctions['fun'] = (args: Expression[], scope: Scope) => {
+    if (!args.length) {
+        throw new SyntaxError("'fun' requires a body")
+    }
+
+    const body = args[args.length - 1]
+    const params = args.slice(0, args.length - 1).map(arg => {
+        if (arg.type !== 'word') {
+            throw new SyntaxError("parameter must be a word but got " + arg);
+            
+        }
+        return arg.value
+    })
+
+    const funDef = function() {
+        // cannot use arrow function definition to access arguments object
+        if (arguments.length != params.length) {
+            throw new TypeError("function expected " + params.length + " args but got " + arguments.length);
+        } 
+        const localScope: Scope = Object.create(scope)
+
+        for (let i = 0; i < params.length; i++) {
+            localScope[params[i]] = arguments[i]
+        }
+        return evaluateExpression(body, localScope)
+    }
+
+    return funDef
+ }
+
+
+ Object.freeze(keywordFunctions)
+
 function evaluateExpression(expression: Expression, scope: Scope): EvaluationResult {
 
     if (expression.type === "value") {
@@ -115,9 +148,7 @@ Object.freeze(topScope)
 
 
 function evaluate(s: string): EvaluationResult {
-    const scope: Scope = Object.create(topScope)
-    // scope['x'] = 10
-    return evaluateExpression(parse(s), scope)
+    return evaluateExpression(parse(s), Object.create(topScope))
 }
 
 
@@ -146,7 +177,20 @@ for (let p of ['123', '"hello"', '"hello"    ', '"fefefe', 'x', 'y',
              do(define(total, +(total, count)),
                 define(count, +(count, 1)))),
        print(total))
-    ` // 55
+    `, // 55
+    `
+    do(define(plusOne, fun(a, +(a, 1))),
+       print(plusOne(10)))
+    `, // 11
+
+
+    `
+do(define(pow, fun(base, exp,
+     if(==(exp, 0),
+        1,
+        *(base, pow(base, -(exp, 1)))))),
+   print(pow(2, 10)))
+` // 1024
 ]) {
 
     console.log('evaluate expression ' + p.replace(/(?:\r\n|\r|\n|\s{2,})/g, ''))
