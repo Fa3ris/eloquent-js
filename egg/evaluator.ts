@@ -211,7 +211,12 @@ do(define(sum, fun(arr,
              define(i, +(i, 1)))),
         sum))),
    print(sum(array(1, 2, 3))))
-` // 6
+`, // 6
+
+`
+do(define(f, fun(a, fun(b, +(a, b)))),
+   print(f(4)(5)))
+` // 9
 ]) {
 
     console.log('evaluate expression ' + p.replace(/(?:\r\n|\r|\n|\s{2,})/g, ''))
