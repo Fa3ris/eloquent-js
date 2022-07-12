@@ -1,7 +1,6 @@
 
 console.log('🥚 EGG programming language 🐣')
 
-
 /* 
     Syntax
 
@@ -46,24 +45,24 @@ type ExpressionType =
     | 'apply' 
 ;
 
-type Expression = ValueExpression | ApplyExpression | WordExpression
+export type Expression = ValueExpression | ApplyExpression | WordExpression
 
 
 type BaseExpression = {
     type: ExpressionType
 }
 
-type ValueExpression = BaseExpression & {
+export type ValueExpression = BaseExpression & {
     type : 'value'
     value: string | number
 }
 
-type WordExpression = BaseExpression & {
+export type WordExpression = BaseExpression & {
     type : 'word'
     value: string
 }
 
-type ApplyExpression = BaseExpression & {
+export type ApplyExpression = BaseExpression & {
     type : 'apply'
     operator: Expression,
     args: Expression[]
@@ -177,7 +176,7 @@ function parseApplyExpression(expression: WordExpression | ApplyExpression, prog
     }
 }
 
-function parse(content: string): Expression {
+export function parse(content: string): Expression {
     const program = new Program(content);
     const expression = parseExpression(program)
     
@@ -219,6 +218,7 @@ function nextExpression(program: Program): Expression {
 
 // ----- TEST ------
 
+if (require.main === module) // if was called via node and not reported
 for (let p of ['do', '123', '"hello"', '"hello"    ', '"fefefe', "      \nhola", "+(a, 10)",
 `  * ( b ,   100 )  `, 
 
@@ -250,8 +250,7 @@ function printExpression(s: string) {
 
 function printParse(s: string) {
     try {
-        const exp = parse(s);
-        console.log(JSON.stringify(exp, undefined, 1))
+        console.dir(parse(s), {depth: null} )
     } catch (err) {
         console.error((err as SyntaxError).message)
     }
