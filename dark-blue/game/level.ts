@@ -1,4 +1,4 @@
-import { Coin, EntityCreatorFn, Lava, Player } from "./entities.js";
+import { Coin, Entity, EntityCreatorFn, Lava, Player } from "./entities.js";
 import { Vector2 } from "./utils.js";
 
 
@@ -22,6 +22,12 @@ export class Level {
     private _width: number;
 
     private _state: any[][]
+
+    private _entities: Entity[] = []
+
+    get entities(): Entity[] {
+        return this._entities
+    }
     constructor(plan: string = simpleLevelPlan) {
         this._plan = plan
 
@@ -36,7 +42,9 @@ export class Level {
 
                 if (typeof type === 'string') { return type }
 
-                return String(type(new Vector2(), char).type).toUpperCase()
+                const entity: Entity = type(new Vector2(), char); 
+                this._entities.push(entity)
+                return String(entity.type).toUpperCase()
                 return `empty (${row},${col})`
             })
         })
