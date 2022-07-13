@@ -1,0 +1,24 @@
+.background {
+    background-color: blue;
+    border-spacing: 0;
+}
+
+.background .empty {
+    background-color: blue;
+
+}
+
+.background .wall {
+    background-color: brown;
+
+
+}
+
+.background .lava {
+    background-color: red;
+
+}
+
+td {
+    padding: 0;
+}

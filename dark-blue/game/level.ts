@@ -2,7 +2,8 @@ import { Coin, Entity, EntityCreatorFn, Lava, Player } from "./entities.js";
 import { Vector2 } from "./utils.js";
 
 
-const levelChars : {[char: string]: string | EntityCreatorFn }= {
+type BackgroundType = 'empty' | 'wall' | 'lava'
+const levelChars : {[char: string]: BackgroundType | EntityCreatorFn }= {
     '.': 'empty',
     '#': 'wall',
     '+': 'lava',
@@ -17,13 +18,13 @@ Object.freeze(levelChars)
 
 export class Level {
 
-    private _plan: string;
-    private _height: number;
-    private _width: number;
+    _plan: string;
+    _height: number;
+    _width: number;
 
-    private _state: any[][]
+    _state: BackgroundType[][]
 
-    private _entities: Entity[] = []
+    _entities: Entity[] = []
 
     get entities(): Entity[] {
         return this._entities
@@ -35,18 +36,16 @@ export class Level {
         this._height = grid.length
         this._width = grid[0].length
 
-        this._state = grid.map((rowArr, row) => {
+        this._state = <BackgroundType[][]> grid.map((rowArr, row) => {
             return rowArr.map((char, col) => {
-
                 const type = levelChars[char]
-
-                if (typeof type === 'string') { return type }
+                if (typeof type === 'string') { return type as BackgroundType }
 
                 const entity: Entity = type(new Vector2(), char); 
                 this._entities.push(entity)
-                return String(entity.type).toUpperCase()
-                return `empty (${row},${col})`
-            })
+                return 'empty'
+              }
+            )
         })
     }
 

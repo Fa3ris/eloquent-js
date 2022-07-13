@@ -10,8 +10,8 @@ export type EntityCreatorFn = (pos: Vector2, char: string) => Entity;
 
 export class Player {
 
-    private _pos: Vector2;
-    private _speed: Vector2
+    _pos: Vector2;
+    _speed: Vector2
 
     constructor(pos: Vector2, speed: Vector2 = new Vector2) {
         this._pos = pos
@@ -33,9 +33,9 @@ export class Player {
 
 export class Coin {
 
-    private _pos: Vector2;
-    private _basePos: Vector2;
-    private _wobble: number
+    _pos: Vector2;
+    _basePos: Vector2;
+    _wobble: number
 
     constructor(pos: Vector2, basePos: Vector2, wobble: number) {
         this._pos = pos
@@ -56,8 +56,8 @@ export class Coin {
 
 export class Lava {
 
-    private _pos: Vector2;
-    private _behaviour: LavaBehaviour
+    _pos: Vector2;
+    _behaviour: LavaBehaviour
 
     constructor(pos: Vector2, behaviour: LavaBehaviour) {
         this._pos = pos

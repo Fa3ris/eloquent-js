@@ -1,10 +1,11 @@
 import { Entity, Player } from "./game/entities.js";
 import { Level } from "./game/level.js";
+import { DOMRenderer } from "./render/dom-renderer.js";
 
 
 type GameStatus = 'playing' | 'win' | 'lose';
 
-class State {
+export class State {
     level: Level
     entities: Entity[]
     status: GameStatus
@@ -26,5 +27,10 @@ class State {
 }
 
 
-State.start(new Level())
-// new Level().print();
+const level = new Level()
+const state = State.start(level)
+
+if (typeof window !== 'undefined') {
+    const renderer = new DOMRenderer(document.body, level)
+    renderer.syncState(state)
+}
