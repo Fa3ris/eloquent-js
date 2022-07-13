@@ -105,7 +105,6 @@ keywordFunctions['define'] = (args: Expression[], scope: Scope) => {
     let parentProto = Object.getPrototypeOf(scope)
     while (parentProto != null) {
         if (parentProto.hasOwnProperty(args[0].value)) {
-            console.log(args[0].value, 'found in proto', parentProto)
             const value = evaluateExpression(args[1], scope)
             parentProto[args[0].value] = value
             return value
@@ -252,17 +251,20 @@ do(define(x, 4),
 do(define(y, 10),
     do(define(x, 4),
         define(setx, fun(val, set(x, val))),
-        define(sety, fun(val,
-            do( 
-                define(setXY, fun(x, y, 
-                    do(
-                        setx(x),
-                        sety(y)
-                    ))),
-                set(y, val),
-                setXY(25, 89)
+        define(sety, 
+            fun(val,
+                do( 
+                    set(y, val)
+                )
             )
-        )
+        ),
+        define(setXY, 
+            fun(x, y, 
+                do(
+                    setx(x),
+                    sety(y)
+                )
+            )
         ),
         setx(50),
         sety(100),
