@@ -56,5 +56,15 @@ function drawGrid(level: Level): HTMLElement {
 }
 
 function drawEntities(entities: Entity[]): HTMLElement {
-    return createElement("div", {})
+    return createElement("div", { class: "entity-layer"},
+        ...entities.map((entity) => {
+
+            const rect = createElement("div", {class : `entity ${entity.type}`})
+            rect.style.height = `${entity.size.y * SCALE}px`
+            rect.style.width = `${entity.size.x * SCALE}px`
+            rect.style.left = `${entity.pos.x * SCALE}px`
+            rect.style.top = `${entity.pos.y * SCALE}px`
+            return rect
+        })
+    )
 }

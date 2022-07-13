@@ -41,7 +41,7 @@ export class Level {
                 const type = levelChars[char]
                 if (typeof type === 'string') { return type as BackgroundType }
 
-                const entity: Entity = type(new Vector2(), char); 
+                const entity: Entity = type(new Vector2(col, row), char); 
                 this._entities.push(entity)
                 return 'empty'
               }

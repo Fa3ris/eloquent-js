@@ -1,24 +1,40 @@
 .background {
     background-color: blue;
     border-spacing: 0;
+    table-layout: fixed;
 }
 
-.background .empty {
+.empty {
     background-color: blue;
-
 }
 
-.background .wall {
+.wall {
     background-color: brown;
-
-
 }
 
-.background .lava {
+.lava {
     background-color: red;
-
 }
 
-td {
+.player {
+    background-color: green;
+}
+
+.coin {
+    background-color: yellow;
+}
+
+.entity {
+    position: absolute;
+}
+
+.game {
+    position: relative; /* parent container of .entity */
+    overflow: hidden;
+    max-width: 600px;
+    max-height: 450px;
+}
+
+.background td {
     padding: 0;
 }
