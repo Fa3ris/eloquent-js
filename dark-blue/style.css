@@ -1,3 +1,9 @@
+*, *::after, *::before {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 .background {
     background-color: blue;
     border-spacing: 0;
@@ -33,8 +39,11 @@
     overflow: hidden;
     max-width: 600px;
     max-height: 450px;
+    margin: auto;
+    margin-top: 20px;
 }
 
 .background td {
     padding: 0;
 }
+

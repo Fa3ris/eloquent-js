@@ -13,6 +13,7 @@ export class DOMRenderer {
     constructor(parentElt: Node, level: Level) {
         this.grid = drawGrid(level)
         this.dom = createElement("div", {class: "game"}, this.grid)
+        this.dom.style.width = `${level._width * SCALE}px`
         parentElt.appendChild(this.dom)
         this.entityLayer = null
     }
@@ -50,7 +51,7 @@ function drawGrid(level: Level): HTMLElement {
     })
     return createElement("table", {
         class: 'background',
-        style: `width: ${level._width * SCALE}px`
+        style: `width: 100%`
 
     }, ...grid)
 }
