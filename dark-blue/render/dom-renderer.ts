@@ -26,6 +26,9 @@ export class DOMRenderer {
         if (this.entityLayer) { this.entityLayer.remove() }
         this.entityLayer = drawEntities(state.entities)
         this.dom.appendChild(this.entityLayer)
+        const playerElt = this.dom.getElementsByClassName("entity player")[0] 
+        playerElt.scrollIntoView()
+        console.log('scrolled into view', playerElt)
     }
 }
 
