@@ -57,9 +57,31 @@ export class Level {
         console.groupEnd()
     }
 
-    touches(pos: Vector2, size: Vector2, type: BackgroundType): boolean {
-        throw new Error("not implemented");
+    /**
+     * 
+     * @param pos 
+     * @param size 
+     * @param type 
+     * @returns true if the quad defined by {pos, size} touches any background tile of the given type 
+     */
+    touchesBgType(pos: Vector2, size: Vector2, type: BackgroundType): boolean {
 
+        const xStart = Math.floor(pos.x)
+        const yStart = Math.floor(pos.y)
+        const xEnd = Math.ceil(pos.x + size.x)
+        const yEnd = Math.ceil(pos.y + size.y)
+
+        for (let x = xStart; x <= xEnd; x++) {
+            for (let y = yStart; y <= yEnd; y++) {
+                const oob = x < 0 || x >= this._width || y < 0 || y >= this._height
+
+                const touchedType: BackgroundType = oob ? 'wall' : this._state[y][x]
+
+                if (type === touchedType) {return true}
+
+            }
+        }
+        return false
     }
 }
 

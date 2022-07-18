@@ -1,9 +1,10 @@
 import { Entity, Player } from "./game/entities.js";
 import { Level } from "./game/level.js";
+import { aabbCollision } from "./game/utils.js";
 import { DOMRenderer } from "./render/dom-renderer.js";
 
 
-type GameStatus = 'playing' | 'win' | 'lose';
+export type GameStatus = 'playing' | 'win' | 'lose';
 
 export class State {
     level: Level
@@ -27,11 +28,28 @@ export class State {
 
     update(step: number, keys: {[key: string]: string}): State {
 
-        throw new Error('not implemented')
         this.entities = this.entities.map(entity => entity.update(step, this, keys))
 
+        let newState = new State(this.level, this.entities, this.status)
 
-        return this
+        if (newState.status != 'playing') {
+            return newState
+        }
+
+        const player = newState.player
+
+        if (this.level.touchesBgType(player.pos, player.size, "lava")) {
+            return new State(this.level, this.entities, 'lose')
+        }
+
+
+        for (let entity of this.entities) {
+            if (entity != player && aabbCollision(entity, player)) {
+                newState = entity.collideWithPlayer(newState)
+            }
+        }
+
+        return newState
     }
 }
 
