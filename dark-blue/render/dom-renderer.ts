@@ -2,11 +2,20 @@ import { Entity } from "../game/entities";
 import { Level } from "../game/level.js";
 import { State } from "../main.js";
 
-export class DOMRenderer {
+export interface Renderer {
+    
+    clear(): void
+    syncState(state: State): void
+}
+
+export type RendererConstructor = new(parent: Node, level: Level) => Renderer
+
+export class DOMRenderer implements Renderer {
 
     dom: HTMLElement
 
     entityLayer: HTMLElement | null
+    debugLayer: HTMLElement | null
 
     grid: HTMLElement
 
@@ -16,6 +25,7 @@ export class DOMRenderer {
         this.dom.style.width = `${level._width * SCALE}px`
         parentElt.appendChild(this.dom)
         this.entityLayer = null
+        this.debugLayer = null
     }
 
     clear() {
@@ -24,8 +34,18 @@ export class DOMRenderer {
 
     syncState(state: State) {
         if (this.entityLayer) { this.entityLayer.remove() }
+        if (this.debugLayer) {this.debugLayer.remove()}
         this.entityLayer = drawEntities(state.entities)
         this.dom.appendChild(this.entityLayer)
+
+        this.debugLayer = createElement('div', {class: "debug"})
+        state.entities.forEach(e => {
+            if (e.debugStr) {
+                (<HTMLElement> this.debugLayer).appendChild(createElement("div",{}, new Text(e.debugStr())))
+            }
+        })
+
+        this.dom.append(this.debugLayer)
         const playerElt = this.dom.getElementsByClassName("entity player")[0] 
         playerElt.scrollIntoView()
         console.log('scrolled into view', playerElt)
@@ -54,7 +74,6 @@ function drawGrid(level: Level): HTMLElement {
     })
     return createElement("table", {
         class: 'background',
-        style: `width: 100%`
 
     }, ...grid)
 }

@@ -8,6 +8,7 @@
     background-color: blue;
     border-spacing: 0;
     table-layout: fixed;
+    width: inherit;
 }
 
 .empty {

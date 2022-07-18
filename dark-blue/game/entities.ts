@@ -10,6 +10,9 @@ export type Entity = {
     type: EntityType
     pos: Vector2
     size: Vector2
+
+
+    debugStr?(): string
 }
 
 export type EntityCreatorFn = (pos: Vector2, char: string) => Entity;
@@ -44,7 +47,8 @@ export class Player {
     }
 
     update(step: number, state: State, keys: KeysDown): Entity {
-
+        // keys["ArrowLeft"]= true
+        // debugger
         let xSpeed = 0;
 
         if (goLeft(keys)) {
@@ -77,6 +81,9 @@ export class Player {
         throw new Error('player cannot collide with himself')
     }
 
+    debugStr(): string {
+        return 'player' + JSON.stringify({pos: this.pos, speed: this._speed})
+    }
 }
 
 

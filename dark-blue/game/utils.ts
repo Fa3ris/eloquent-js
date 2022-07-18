@@ -1,4 +1,4 @@
-import { Entity } from "./entities";
+import { Entity } from "./entities.js";
 
 export class Vector2 {
     x: number
@@ -28,7 +28,11 @@ export function aabbCollision(e1: Entity, e2: Entity): boolean {
     
 }
 
-export function trackKeys(keysToTrack: string[] = ["ArrowLeft", "ArrowRight", "ArrowUp"]): KeysDown {
+const LEFT = "ArrowLeft"
+const RIGHT = "ArrowRight"
+const UP = "ArrowUp"
+
+export function trackKeys(keysToTrack: string[] = [LEFT, RIGHT, UP]): KeysDown {
     const keys: KeysDown = Object.create({})
 
     function track(e: KeyboardEvent) {
@@ -47,22 +51,14 @@ export function trackKeys(keysToTrack: string[] = ["ArrowLeft", "ArrowRight", "A
 export type KeysDown = {[key: string]: any };
 
 export function goLeft(keys: KeysDown): boolean {
-    return keys['ArrowLeft']
+    return keys[LEFT]
     
 }
 
 export function goRight(keys: KeysDown): boolean {
-    return keys['ArrowRight']
+    return keys[RIGHT]
 }
 
 export function jump(keys: KeysDown): boolean {
-    return keys['ArrowUp']   
+    return keys[UP]   
 }
-
-
-export function runAnimation(func: any) {
-
-}
-
-export function runLevel() {}
-export function runGame() {}

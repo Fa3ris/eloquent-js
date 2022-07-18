@@ -1,3 +1,4 @@
+import { runGame } from "./game/core.js";
 import { Entity, Player } from "./game/entities.js";
 import { Level } from "./game/level.js";
 import { aabbCollision } from "./game/utils.js";
@@ -54,10 +55,7 @@ export class State {
 }
 
 
-const level = new Level()
-const state = State.start(level)
 
 if (typeof window !== 'undefined') {
-    const renderer = new DOMRenderer(document.body, level)
-    renderer.syncState(state)
+    runGame(DOMRenderer)
 }
