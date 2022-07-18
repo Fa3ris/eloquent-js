@@ -1,3 +1,5 @@
+import { Entity } from "./entities";
+
 export class Vector2 {
     x: number
     y: number
@@ -18,4 +20,15 @@ export class Vector2 {
         this.y *= factor
         return this
     }
+}
+
+
+export function aabbCollision(e1: Entity, e2: Entity): boolean {
+
+    throw new Error("not implemented");
+    
+}
+
+export function trackKeys(keysToTrack: string[]): {[key: string]: any } {
+    throw new Error("not implemented");
 }

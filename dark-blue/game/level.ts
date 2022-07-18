@@ -56,6 +56,11 @@ export class Level {
         console.dir(this._state, {depth: null})
         console.groupEnd()
     }
+
+    touches(pos: Vector2, size: Vector2, type: BackgroundType): boolean {
+        throw new Error("not implemented");
+
+    }
 }
 
 /*

@@ -1,7 +1,11 @@
+import { State } from "../main.js";
 import { Vector2 } from "./utils.js";
 
 type EntityType = 'player' | 'coin' | 'lava'
 export type Entity = {
+    update(step: number, state: State, keys: { [key: string]: string; }): Entity;
+
+    collideWithPlayer(state: State): State;
 
     type: EntityType
     pos: Vector2
@@ -34,6 +38,17 @@ export class Player {
     get type(): EntityType {
         return 'player'
     }
+
+    update(step: number, state: State, keys: { [key: string]: string; }): Entity {
+
+    throw new Error("not implemented");
+
+    }
+
+    collideWithPlayer(state: State): State {
+        throw new Error('not implemented')
+    }
+
 }
 
 
@@ -62,6 +77,16 @@ export class Coin {
     get type(): EntityType {
         return 'coin'
     }
+
+    update(step: number, state: State, keys: { [key: string]: string; }): Entity { 
+
+    throw new Error("not implemented");
+
+    }
+
+    collideWithPlayer(state: State): State {
+        throw new Error('not implemented')
+    }
 }
 
 export class Lava {
@@ -87,6 +112,16 @@ export class Lava {
     get type(): EntityType {
         return 'lava'
     }
+
+    update(step: number, state: State, keys: { [key: string]: string; }): Entity {
+        throw new Error("not implemented");
+
+    }
+
+    collideWithPlayer(state: State): State {
+        throw new Error('not implemented')
+    }
+
 }
 
 

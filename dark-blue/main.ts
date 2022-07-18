@@ -24,6 +24,15 @@ export class State {
     get player(): Player {
         return this.entities.find(e => e.type === 'player') as Player
     }
+
+    update(step: number, keys: {[key: string]: string}): State {
+
+        throw new Error('not implemented')
+        this.entities = this.entities.map(entity => entity.update(step, this, keys))
+
+
+        return this
+    }
 }
 
 
