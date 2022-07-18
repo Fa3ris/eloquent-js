@@ -49,28 +49,25 @@ export class Player {
 
         if (goLeft(keys)) {
             xSpeed -= Player.xSpeed
-        }
-        if (goRight(keys)) {
+        } else if (goRight(keys)) {
             xSpeed += Player.xSpeed    
         }
 
-        const newX = this.pos.add(new Vector2(xSpeed * step, 0))
-        let pos: Vector2
-        if (!state.level.touchesBgType(newX, this.size, 'wall')) {
-            pos = newX
-        } else {
-            pos = this.pos
-        }
+        const movedX = this.pos.add(new Vector2(xSpeed * step, 0))
+        let pos: Vector2 = this.pos
+        // can move along x if does not hit wall
+        if (!state.level.touchesBgType(movedX, this.size, 'wall')) {
+            pos = movedX
+        } 
 
         let ySpeed = this._speed.y + step * Player.gravity
-        const newY = pos.add(new Vector2(0, ySpeed * step))
+        const movedY = pos.add(new Vector2(0, ySpeed * step))
 
-        if (!state.level.touchesBgType(newY, this.size, 'wall')) {
-            pos = newY
-        // we hit a wall
-        } else if (jump(keys) && ySpeed > 0) { // weird
+        if (!state.level.touchesBgType(movedY, this.size, 'wall')) {
+            pos = movedY
+        } else if (jump(keys) && ySpeed > 0) { // jump pressed while going down and touching a wall
             ySpeed -= Player.jumpSpeed
-        } else {
+        } else { // do not move y
             ySpeed = 0
         }
         return new Player(pos, new Vector2(xSpeed, ySpeed))

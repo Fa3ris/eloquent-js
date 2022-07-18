@@ -28,8 +28,19 @@ export function aabbCollision(e1: Entity, e2: Entity): boolean {
     
 }
 
-export function trackKeys(keysToTrack: string[]): KeysDown {
-    throw new Error("not implemented");
+export function trackKeys(keysToTrack: string[] = ["ArrowLeft", "ArrowRight", "ArrowUp"]): KeysDown {
+    const keys: KeysDown = Object.create({})
+
+    function track(e: KeyboardEvent) {
+        if (keysToTrack.includes(e.key)) {
+            keys[e.key] = e.type === 'keydown'
+            e.preventDefault()
+        }
+    }
+
+    window.addEventListener("keydown", track)
+    window.addEventListener("keyup", track)
+    return keys
 }
 
 
