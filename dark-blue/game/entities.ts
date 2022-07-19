@@ -100,10 +100,11 @@ export class Coin {
     }
 
     static create(pos: Vector2, char: string): Entity {
-        return new Coin(pos, new Vector2(), 1)
+        let basePos = pos.add(new Vector2(0.2, 0.1));
+        return new Coin(basePos, basePos, Math.random() * Math.PI * 2)
     }
 
-    static readonly size = new Vector2(1, 1)
+    static readonly size = new Vector2(.6, .6)
 
     static readonly wobbleSpeed = 8
     static readonly wobbleRadius = 0.07
@@ -116,10 +117,14 @@ export class Coin {
         return 'coin'
     }
 
+    debugStr(): string {
+        return 'coin' + JSON.stringify({pos: this.pos, basepos: this._basePos, wobble: this._wobble})
+    }
+
     update(step: number, state: State, keys: KeysDown): Entity { 
         const currentWobble = this._wobble + step * Coin.wobbleSpeed;
         const wobbleOffset = Math.sin(currentWobble) * Coin.wobbleRadius
-        return new Coin(this._basePos.add(new Vector2(0, wobbleOffset)), this._basePos, this._wobble)
+        return new Coin(this._basePos.add(new Vector2(0, wobbleOffset)), this._basePos, currentWobble)
     }
 
     collideWithPlayer(state: State): State {
@@ -138,11 +143,20 @@ export class Lava {
     constructor(pos: Vector2, speed: Vector2, behaviour: LavaBehaviour) {
         this.pos = pos
         this._behaviour = behaviour
-        this.speed = new Vector2()
+        this.speed = speed
     }
 
     static create(pos: Vector2, char: string): Entity {
-        return new Lava(pos, new Vector2(), new DrippingLava(pos))
+        switch(char) {
+            case '=':
+                return new Lava(pos, new Vector2(1, 0), new HorizontalLava())
+            case '|':
+                return new Lava(pos, new Vector2(0, 1), new VerticalLava())
+            case 'v':
+                return new Lava(pos, new Vector2(0, 1), new DrippingLava(pos))
+            default:
+                throw new Error("unknown char for lava " + char);
+        }
     }
 
     static readonly size = new Vector2(1, 1)
@@ -157,7 +171,6 @@ export class Lava {
 
     update(step: number, state: State, keys: KeysDown): Entity {
         return this._behaviour.update(step, state, this)
-
     }
 
     collideWithPlayer(state: State): State {

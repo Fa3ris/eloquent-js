@@ -8,7 +8,7 @@ export interface Renderer {
     syncState(state: State): void
 }
 
-export type RendererConstructor = new(parent: Node, level: Level) => Renderer
+export type RendererConstructor = new(parent: HTMLElement, level: Level) => Renderer
 
 export class DOMRenderer implements Renderer {
 
@@ -19,10 +19,15 @@ export class DOMRenderer implements Renderer {
 
     grid: HTMLElement
 
-    constructor(parentElt: Node, level: Level) {
+    private parentElt: HTMLElement
+
+    static readonly DEBUG = false
+
+    constructor(parentElt: HTMLElement, level: Level) {
         this.grid = drawGrid(level)
         this.dom = createElement("div", {class: "game"}, this.grid)
         this.dom.style.width = `${level._width * SCALE}px`
+        this.parentElt = parentElt
         parentElt.appendChild(this.dom)
         this.entityLayer = null
         this.debugLayer = null
@@ -30,46 +35,54 @@ export class DOMRenderer implements Renderer {
 
     clear() {
         this.dom.remove()
+        if (DOMRenderer.DEBUG && this.debugLayer) {this.debugLayer.remove()}
     }
 
     syncState(state: State) {
         if (this.entityLayer) { this.entityLayer.remove() }
-        if (this.debugLayer) {this.debugLayer.remove()}
+        if (DOMRenderer.DEBUG && this.debugLayer) {this.debugLayer.remove()}
         this.entityLayer = drawEntities(state.entities)
         this.dom.appendChild(this.entityLayer)
 
-        this.debugLayer = createElement('div', {class: "debug"})
-        state.entities.forEach(e => {
-            if (e.debugStr) {
-                (<HTMLElement> this.debugLayer).appendChild(createElement("div",{}, new Text(e.debugStr())))
-            }
-        })
+        if (DOMRenderer.DEBUG) {
 
-        this.dom.append(this.debugLayer)
-        const playerElt = this.dom.getElementsByClassName("entity player")[0]
+            this.debugLayer = createElement('div', {class: "debug"})
+            state.entities.forEach(e => {
+                if (e.debugStr) {
+                    (<HTMLElement> this.debugLayer).appendChild(createElement("div",{}, new Text(e.debugStr())))
+                }
+            })
+        }
 
-        const domW = this.dom.clientWidth
-        const domH = this.dom.clientHeight
-        const margin = domW / 3
+        DOMRenderer.DEBUG && this.debugLayer && this.parentElt.append(this.debugLayer)
+
+        const viewportW = this.dom.clientWidth
+        const viewportH = this.dom.clientHeight
+        const margin = viewportW / 3
 
         const viewportLeft = this.dom.scrollLeft
         const viewportTop = this.dom.scrollTop
-        const viewportRight = viewportLeft + domW
-        const viewportBottom = viewportTop + domH
+        const viewportRight = viewportLeft + viewportW
+        const viewportBottom = viewportTop + viewportH
 
         const player = state.player
         const targetCenter = player.pos.add(player.size.mul(0.5)).mul(SCALE)
 
-        if (targetCenter.x < viewportLeft + margin) {
+        // center viewport around player
+
+        if (false)
+        if (targetCenter.x < viewportLeft + margin) { // trop a gauche
             this.dom.scrollLeft = targetCenter.x - margin
-        } else if (targetCenter.x + margin > viewportRight) {
-            this.dom.scrollLeft = targetCenter.x - domW + margin
+        } else if (targetCenter.x > viewportRight - margin) { // trop a droite
+            this.dom.scrollLeft = targetCenter.x - viewportW + margin
         }
+        
+        this.dom.scrollLeft = targetCenter.x - margin
 
         if (targetCenter.y < viewportTop + margin) {
             this.dom.scrollTop = targetCenter.y - margin
         } else if (targetCenter.y + margin > viewportBottom) {
-            this.dom.scrollTop = targetCenter.y - domH + margin
+            this.dom.scrollTop = targetCenter.y - viewportH + margin
         }
     }
 }
@@ -87,6 +100,8 @@ function createElement(name: string, attributes: {[name: string]: string}, ...ch
 } 
 
 const SCALE = 20;
+
+
 function drawGrid(level: Level): HTMLElement {
 
     const grid = level._state.map(row => {
