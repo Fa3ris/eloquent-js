@@ -130,7 +130,7 @@ export class Coin {
     collideWithPlayer(state: State): State {
         const filtered = state.entities.filter(e => e != this)
         const newStatus: GameStatus = filtered.some(e => e.type === 'coin') ? state.status : "win"
-        return new State(state.level, filtered, newStatus)
+        return state.forEntitiesAndStatus(filtered, newStatus)
     }
 }
 
@@ -174,7 +174,7 @@ export class Lava {
     }
 
     collideWithPlayer(state: State): State {
-        return new State(state.level, state.entities, 'lose')
+        return state.forStatus('lose')
     }
 
 }

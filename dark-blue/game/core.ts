@@ -1,4 +1,4 @@
-import { GameStatus, State } from "../main.js";
+import { GameStatus, GlobalState, State } from "../main.js";
 import { Renderer, RendererConstructor } from "../render/dom-renderer.js";
 import { Level } from "./level.js";
 import { KeysDown, trackKeys } from "./utils.js";
@@ -20,11 +20,11 @@ export function runAnimation(func: (step: number) => boolean) {
     requestAnimationFrame(frame)
 }
 
-export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: KeysDown): Promise<GameStatus> {
+export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: KeysDown, globalState: GlobalState): Promise<GameStatus> {
 
     let renderer: Renderer = new rendererCtr(document.body, level)
 
-    let state = State.start(level)
+    let state = State.start(level, globalState)
 
     let timeBeforeExit = 1 // second
 
@@ -36,9 +36,14 @@ export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: K
                 return true // continue to runAnimation
             } else if (timeBeforeExit > 0) {
                 timeBeforeExit -= step
-                return true // game is finished but let player see the state
+                return true // level is finished but let player see the state
             } else { // clear and stop animation
-                renderer.clear()
+                if (state.status === 'lose') {
+                    globalState.lives--
+                }
+                if (globalState.lives > 0) {
+                    renderer.clear()
+                }
                 resolve(state.status)
                 return false
             }
@@ -51,15 +56,27 @@ export async function runGame(renderCtr: RendererConstructor, levelPlans: string
 
     const keys = trackKeys()
 
+    const globalState = new GlobalState(3)
+    let win = true
+
     for (let i = 0; i < levelPlans.length;) {
-        const status = await runLevel(new Level(levelPlans[i]), renderCtr, keys)
+        const status = await runLevel(new Level(levelPlans[i]), renderCtr, keys, globalState)
 
         if (status === 'win') {
             i++
         }
+        if (globalState.lives === 0) {
+            win = false
+            break
+        }
     }
 
-    console.log('WINNER', levelPlans.length - 1)
+    if (win) {
+        console.log('WINNER')
+    } else {
+        console.log('LOSER')
+
+    }
 }
 
 

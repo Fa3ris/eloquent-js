@@ -30,7 +30,7 @@ export function aabbCollision(e1: Entity, e2: Entity): boolean {
 
 const LEFT = "ArrowLeft"
 const RIGHT = "ArrowRight"
-const UP = "ArrowUp"
+const UP = " " // space
 
 export function trackKeys(keysToTrack: string[] = [LEFT, RIGHT, UP]): KeysDown {
     const keys: KeysDown = Object.create({})

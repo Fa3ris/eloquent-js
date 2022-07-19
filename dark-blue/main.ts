@@ -7,31 +7,51 @@ import { DOMRenderer } from "./render/dom-renderer.js";
 
 export type GameStatus = 'playing' | 'win' | 'lose';
 
+export class GlobalState {
+
+    lives: number
+
+    constructor(lives: number) {
+        this.lives = lives
+    }
+}
+
 export class State {
     level: Level
     entities: Entity[]
     status: GameStatus
 
-    constructor(level: Level, entities: Entity[], status: GameStatus) {
+    globalState: GlobalState
+
+    private constructor(level: Level, entities: Entity[], status: GameStatus, globalState: GlobalState) {
         this.level = level
         this.entities = entities
         this.status = status
+        this.globalState = globalState
     }
 
-    static start(level: Level): State {
+    static start(level: Level, globalState: GlobalState): State {
         level.print()
-        return new State(level, level.entities, 'playing')
+        return new State(level, level.entities, 'playing', globalState)
     }
 
     get player(): Player {
         return this.entities.find(e => e.type === 'player') as Player
     }
 
+    forStatus(newStatus: GameStatus): State {
+        return new State(this.level, this.entities, newStatus, this.globalState)
+    }
+
+    forEntitiesAndStatus(newEntities: Entity[], newStatus: GameStatus): State {
+        return new State(this.level, newEntities, newStatus, this.globalState)
+    }
+
     update(step: number, keys: {[key: string]: string}): State {
 
         this.entities = this.entities.map(entity => entity.update(step, this, keys))
 
-        let newState = new State(this.level, this.entities, this.status)
+        let newState = new State(this.level, this.entities, this.status, this.globalState)
 
         if (newState.status != 'playing') {
             return newState
@@ -40,7 +60,7 @@ export class State {
         const player = newState.player
 
         if (this.level.touchesBgType(player.pos, player.size, "lava")) {
-            return new State(this.level, this.entities, 'lose')
+            return new State(this.level, this.entities, 'lose', this.globalState)
         }
 
 
