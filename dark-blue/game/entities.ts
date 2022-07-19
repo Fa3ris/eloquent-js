@@ -1,7 +1,7 @@
 import { GameStatus, State } from "../main.js";
 import { goLeft, goRight, jump, KeysDown, Vector2 } from "./utils.js";
 
-type EntityType = 'player' | 'coin' | 'lava'
+type EntityType = 'player' | 'coin' | 'lava' | 'monster'
 export type Entity = {
     update(step: number, state: State, keys: { [key: string]: string; }): Entity;
 
@@ -174,6 +174,57 @@ export class Lava {
     }
 
     collideWithPlayer(state: State): State {
+        return state.forStatus('lose')
+    }
+
+}
+
+export class Monster {
+
+    pos: Vector2;
+    speed: Vector2;
+
+    constructor(pos: Vector2, speed: Vector2) {
+        this.pos = pos
+        this.speed = speed
+    }
+
+    static create(pos: Vector2, char: string): Entity {
+        return new Monster(pos.add(new Vector2(0, -1)), new Vector2(-1, 0))       
+    }
+
+    static readonly size = new Vector2(1.2, 2)
+
+    get size() {
+        return Monster.size
+    }
+
+    get type(): EntityType {
+        return 'monster'
+    }
+
+    update(step: number, state: State, keys: KeysDown): Entity {
+
+        const newPos = this.pos.add(this.speed.mul(step))
+
+        if (!state.level.touchesBgType(newPos, this.size, "wall")) {
+            return new Monster(newPos, this.speed)
+        } else {
+            return new Monster(newPos, this.speed.mul(-1))
+        }
+        
+    }
+
+    collideWithPlayer(state: State): State {
+
+        const player = state.player
+        const killed = (player.pos.y + player.size.y) < (this.pos.y + 0.2) // factor to be less strict on collision 
+                        && (state.player._speed.y > 0) // player is falling
+        
+        if (killed) {
+            const filtered = state.entities.filter(e => e != this)
+            return state.forEntitiesAndStatus(filtered, state.status)
+        }
         return state.forStatus('lose')
     }
 

@@ -1,4 +1,4 @@
-import { Coin, Entity, EntityCreatorFn, Lava, Player } from "./entities.js";
+import { Coin, Entity, EntityCreatorFn, Lava, Monster, Player } from "./entities.js";
 import { Vector2 } from "./utils.js";
 
 
@@ -11,7 +11,8 @@ const levelChars : {[char: string]: BackgroundType | EntityCreatorFn }= {
     '@': Player.create,
     '=': Lava.create,
     '|': Lava.create,
-    'v': Lava.create
+    'v': Lava.create,
+    'M': Monster.create
 }
 
 Object.freeze(levelChars)

@@ -23,6 +23,10 @@
     background-color: red;
 }
 
+.monster {
+    background-color: purple;
+}
+
 .player {
     background-color: green;
 }
