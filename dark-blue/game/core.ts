@@ -103,6 +103,8 @@ export async function runGame(renderCtr: RendererConstructor, levelPlans: string
         console.log('LOSER')
 
     }
+
+    keys.untrack()
 }
 
 

@@ -44,11 +44,19 @@ export function trackKeys(keysToTrack: string[] = [LEFT, RIGHT, UP]): KeysDown {
 
     window.addEventListener("keydown", track)
     window.addEventListener("keyup", track)
+    keys.untrack = function() {
+        console.log('untracking keyboard events')
+        window.removeEventListener("keydown", track)
+        window.removeEventListener("keyup", track)
+    }
     return keys
 }
 
 
-export type KeysDown = {[key: string]: any };
+export type KeysDown = {
+    [key: string]: any,
+    untrack(): void
+};
 
 export function goLeft(keys: KeysDown): boolean {
     return keys[LEFT]
