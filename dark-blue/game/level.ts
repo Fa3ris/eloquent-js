@@ -71,8 +71,8 @@ export class Level {
         const xEnd = Math.ceil(pos.x + size.x)
         const yEnd = Math.ceil(pos.y + size.y)
 
-        for (let x = xStart; x <= xEnd; x++) {
-            for (let y = yStart; y <= yEnd; y++) {
+        for (let x = xStart; x < xEnd; x++) {
+            for (let y = yStart; y < yEnd; y++) {
                 const oob = x < 0 || x >= this._width || y < 0 || y >= this._height
 
                 const touchedType: BackgroundType = oob ? 'wall' : this._state[y][x]
