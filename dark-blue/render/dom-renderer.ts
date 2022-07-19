@@ -46,9 +46,31 @@ export class DOMRenderer implements Renderer {
         })
 
         this.dom.append(this.debugLayer)
-        const playerElt = this.dom.getElementsByClassName("entity player")[0] 
-        playerElt.scrollIntoView()
-        console.log('scrolled into view', playerElt)
+        const playerElt = this.dom.getElementsByClassName("entity player")[0]
+
+        const domW = this.dom.clientWidth
+        const domH = this.dom.clientHeight
+        const margin = domW / 3
+
+        const viewportLeft = this.dom.scrollLeft
+        const viewportTop = this.dom.scrollTop
+        const viewportRight = viewportLeft + domW
+        const viewportBottom = viewportTop + domH
+
+        const player = state.player
+        const targetCenter = player.pos.add(player.size.mul(0.5)).mul(SCALE)
+
+        if (targetCenter.x < viewportLeft + margin) {
+            this.dom.scrollLeft = targetCenter.x - margin
+        } else if (targetCenter.x + margin > viewportRight) {
+            this.dom.scrollLeft = targetCenter.x - domW + margin
+        }
+
+        if (targetCenter.y < viewportTop + margin) {
+            this.dom.scrollTop = targetCenter.y - margin
+        } else if (targetCenter.y + margin > viewportBottom) {
+            this.dom.scrollTop = targetCenter.y - domH + margin
+        }
     }
 }
 
