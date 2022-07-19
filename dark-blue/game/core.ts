@@ -22,14 +22,20 @@ export function runAnimation(func: (step: number) => boolean) {
 
 export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: KeysDown, globalState: GlobalState): Promise<GameStatus> {
 
-    let renderer: Renderer = new rendererCtr(document.body, level)
-
-    let state = State.start(level, globalState)
-
-    let timeBeforeExit = 1 // second
-
     return new Promise(resolve => {
-        runAnimation(step => {
+        let renderer: Renderer = new rendererCtr(document.body, level)
+
+        let state = State.start(level, globalState)
+
+        let timeBeforeExit = 1 // in second
+
+        let oldPauseBtnState: string | undefined = undefined;
+        let paused = false
+
+        function animationFunction(step: number) {
+            if (paused) {
+                return false
+            }
             state = state.update(step, keys)
             renderer.syncState(state)
             if (state.status == 'playing') {
@@ -45,9 +51,29 @@ export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: K
                     renderer.clear()
                 }
                 resolve(state.status)
+                window.removeEventListener("keydown", trackTransition)
+                window.removeEventListener("keyup", trackTransition)
                 return false
             }
-        })
+        }
+
+        function trackTransition(e: KeyboardEvent) {
+            if (e.key !== 'Escape') { return }
+    
+            if (e.type != oldPauseBtnState) {
+                oldPauseBtnState = e.type
+                if (e.type === 'keydown') {
+                    paused = !paused
+                    if (!paused) {
+                        runAnimation(animationFunction)
+                    }
+                }
+            }
+        }
+
+        window.addEventListener("keydown", trackTransition)
+        window.addEventListener("keyup", trackTransition)
+        runAnimation(animationFunction)
 
     })
 
