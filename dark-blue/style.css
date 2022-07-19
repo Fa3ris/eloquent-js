@@ -27,6 +27,15 @@
     background-color: green;
 }
 
+.lose .player {
+    background-color: black;
+}
+
+.win .player {
+    background-color: gold;
+    box-shadow: -4px -7px 8px white, 4px -7px 8px white;
+}
+
 .coin {
     background-color: yellow;
 }

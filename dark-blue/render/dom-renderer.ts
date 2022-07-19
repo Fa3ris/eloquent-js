@@ -42,6 +42,11 @@ export class DOMRenderer implements Renderer {
         if (this.entityLayer) { this.entityLayer.remove() }
         if (DOMRenderer.DEBUG && this.debugLayer) {this.debugLayer.remove()}
         this.entityLayer = drawEntities(state.entities)
+        if (state.status === 'win') {
+            this.entityLayer.classList.add('win')
+        } else if (state.status === 'lose') {
+            this.entityLayer.classList.add('lose')
+        }
         this.dom.appendChild(this.entityLayer)
 
         if (DOMRenderer.DEBUG) {

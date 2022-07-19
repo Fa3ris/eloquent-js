@@ -52,7 +52,6 @@ export async function runGame(renderCtr: RendererConstructor, levelPlans: string
     const keys = trackKeys()
 
     for (let i = 0; i < levelPlans.length;) {
-        console.log('run level', i)
         const status = await runLevel(new Level(levelPlans[i]), renderCtr, keys)
 
         if (status === 'win') {
