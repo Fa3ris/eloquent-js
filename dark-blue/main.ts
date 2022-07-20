@@ -13,6 +13,8 @@ export class GlobalState {
 
     paused = false
 
+    debug = false
+
     constructor(lives: number) {
         this.lives = lives
     }

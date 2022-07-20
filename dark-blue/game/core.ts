@@ -23,7 +23,7 @@ export function runAnimation(func: (step: number) => boolean) {
 export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: KeysDown, globalState: GlobalState): Promise<GameStatus> {
 
     return new Promise(resolve => {
-        let renderer: Renderer = new rendererCtr(document.body, level)
+        const renderer: Renderer = new rendererCtr(document.body, level)
 
         let state = State.start(level, globalState)
 
@@ -33,6 +33,15 @@ export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: K
             globalState.paused = !globalState.paused
             if (!globalState.paused) {
                 runAnimation(animationFunction)
+            }
+        })
+
+        const debugButtonHandler = createButtonDownHandler('d', () => {
+            globalState.debug = !globalState.debug
+            if (globalState.debug) {
+                console.log("enter debug")
+            } else {
+                console.log("exit debug")
             }
         })
         
@@ -58,12 +67,17 @@ export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: K
 
                 window.removeEventListener("keydown", pauseButtonHandler)
                 window.removeEventListener("keyup", pauseButtonHandler)
+
+                window.removeEventListener("keydown", debugButtonHandler)
+                window.removeEventListener("keyup", debugButtonHandler)
                 return false
             }
         }
 
         window.addEventListener("keydown", pauseButtonHandler)
         window.addEventListener("keyup", pauseButtonHandler)
+        window.addEventListener("keydown", debugButtonHandler)
+        window.addEventListener("keyup", debugButtonHandler)
         runAnimation(animationFunction)
 
     })
