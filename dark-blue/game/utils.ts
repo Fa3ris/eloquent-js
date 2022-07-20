@@ -70,3 +70,17 @@ export function goRight(keys: KeysDown): boolean {
 export function jump(keys: KeysDown): boolean {
     return keys[UP]   
 }
+
+export function createButtonDownHandler(keyToTrack: string, buttonPressedCallback: () => void) {
+    let oldBtnState: string | undefined = undefined;
+
+    return function(e: KeyboardEvent) {
+        if (e.key !== keyToTrack) { return }
+        if (e.type != oldBtnState) {
+            oldBtnState = e.type
+            if (e.type === 'keydown') {
+               buttonPressedCallback()
+            }
+        }
+    }
+}

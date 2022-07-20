@@ -1,7 +1,7 @@
 import { GameStatus, GlobalState, State } from "../main.js";
 import { Renderer, RendererConstructor } from "../render/dom-renderer.js";
 import { Level } from "./level.js";
-import { KeysDown, trackKeys } from "./utils.js";
+import { createButtonDownHandler, KeysDown, trackKeys } from "./utils.js";
 
 export function runAnimation(func: (step: number) => boolean) {
     let lastTime: number | null = null
@@ -10,7 +10,7 @@ export function runAnimation(func: (step: number) => boolean) {
     function frame(time: number) {
         if (lastTime != null) {
             // step is in SECONDS !!!
-            const step = Math.min(time - lastTime, 100) / 1000
+            const step = Math.min(time - lastTime, 100) / 1000 // constrain step to 100 ms max
             if (func(step) === false) { return }
         }
         lastTime = time;
@@ -29,11 +29,15 @@ export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: K
 
         let timeBeforeExit = 1 // in second
 
-        let oldPauseBtnState: string | undefined = undefined;
-        let paused = false
-
+        const pauseButtonHandler = createButtonDownHandler('Escape', () => {
+            globalState.paused = !globalState.paused
+            if (!globalState.paused) {
+                runAnimation(animationFunction)
+            }
+        })
+        
         function animationFunction(step: number) {
-            if (paused) {
+            if (globalState.paused) {
                 return false
             }
             state = state.update(step, keys)
@@ -51,28 +55,15 @@ export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: K
                     renderer.clear()
                 }
                 resolve(state.status)
-                window.removeEventListener("keydown", trackTransition)
-                window.removeEventListener("keyup", trackTransition)
+
+                window.removeEventListener("keydown", pauseButtonHandler)
+                window.removeEventListener("keyup", pauseButtonHandler)
                 return false
             }
         }
 
-        function trackTransition(e: KeyboardEvent) {
-            if (e.key !== 'Escape') { return }
-    
-            if (e.type != oldPauseBtnState) {
-                oldPauseBtnState = e.type
-                if (e.type === 'keydown') {
-                    paused = !paused
-                    if (!paused) {
-                        runAnimation(animationFunction)
-                    }
-                }
-            }
-        }
-
-        window.addEventListener("keydown", trackTransition)
-        window.addEventListener("keyup", trackTransition)
+        window.addEventListener("keydown", pauseButtonHandler)
+        window.addEventListener("keyup", pauseButtonHandler)
         runAnimation(animationFunction)
 
     })
