@@ -1,5 +1,5 @@
 import { Entity } from "../game/entities";
-import { Level } from "../game/level.js";
+import { Level, levelChars } from "../game/level.js";
 import { State } from "../main.js";
 
 export interface Renderer {
@@ -132,4 +132,99 @@ function drawEntities(entities: Entity[]): HTMLElement {
             return rect
         })
     )
+}
+
+export class EditorRenderer {
+
+    dom: HTMLElement
+
+    help: HTMLElement
+
+    parentElt: HTMLElement
+    constructor(parentElt: HTMLElement) {
+        this.dom = createElement("div", {class: "editor"})
+        this.parentElt = parentElt
+        this.help = createElement("div", {class: "help"}, 
+            new Text("'d' : toggle editor mode")
+        )
+        this.parentElt.append(this.help)
+    }
+    
+    display(level: Level) {
+        this.dom.appendChild( new Text("editor"))
+        const plan = level._plan
+
+        
+        plan.split('\n').map((rowString, rowIndex) => {
+            
+            const row = document.createElement('div');
+
+            [...rowString].map((char, colIndex) => {
+                const input = document.createElement('input')
+                input.type = 'text'
+                input.value = char
+                input.maxLength = 1
+                input.style.textAlign = 'center'
+                input.style.width = '20px'
+                input.dataset.row = String(rowIndex);
+                input.dataset.col = String(colIndex);
+                input.addEventListener('input', (e: Event) =>  {
+                    const t = e.target as HTMLInputElement
+                    e.stopPropagation()
+                    if (!t.value) { return } // empty input
+                    const i = rowIndex * (level._width + 1) + colIndex
+                    if (!(t.value in levelChars)) { 
+                        console.log('invalid char', t.value, 'reset to', plan.charAt(i))
+                        t.value = plan.charAt(i)
+                        return 
+                    }
+
+                    console.log('replace', plan.charAt(i), 'by', t.value)
+                    const newPlan = plan.substring(0, i) + t.value + plan.substring(i + 1);
+                    this.clear()
+                    this.display(new Level(newPlan))
+                })
+                // prevent keys to trigger document handler e.g. pause, debug
+                input.addEventListener('keydown', (e: Event) =>  {
+                    e.stopPropagation()
+                })
+
+                input.addEventListener('keyup', (e: Event) =>  {
+                    e.stopPropagation()
+                })
+                return input
+            }).forEach(inputNode => {
+                row.appendChild(inputNode)
+            })
+            return row
+        }).forEach(row => {
+            this.dom.appendChild(row)
+        })
+        console.log(plan)
+        const planStringContainer = document.createElement('div');
+
+        planStringContainer.style.letterSpacing = '.5em'
+        planStringContainer.style.fontFamily = 'Consolas'
+        planStringContainer.style.padding = '2em'
+        planStringContainer.innerHTML = plan.trim().replace(/\n/g, '<br>')
+        this.dom.appendChild(planStringContainer)
+
+        const copyBtn = document.createElement('button')
+        copyBtn.textContent = "copy"
+        
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(planStringContainer.innerText)
+        })
+
+        this.dom.appendChild(copyBtn)
+        this.parentElt.appendChild(this.dom)
+    }
+
+    clear() {
+        while(this.dom.firstChild) {
+            this.dom.removeChild(this.dom.firstChild)
+        }
+        this.dom.remove()
+    }
+
 }

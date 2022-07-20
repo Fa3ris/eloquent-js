@@ -1,5 +1,5 @@
 import { GameStatus, GlobalState, State } from "../main.js";
-import { Renderer, RendererConstructor } from "../render/dom-renderer.js";
+import { EditorRenderer, Renderer, RendererConstructor } from "../render/dom-renderer.js";
 import { Level } from "./level.js";
 import { createButtonDownHandler, KeysDown, trackKeys } from "./utils.js";
 
@@ -29,6 +29,8 @@ export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: K
 
         let timeBeforeExit = 1 // in second
 
+        const editorRenderer: EditorRenderer = new EditorRenderer(document.body)
+
         const pauseButtonHandler = createButtonDownHandler('Escape', () => {
             globalState.paused = !globalState.paused
             if (!globalState.paused) {
@@ -36,12 +38,13 @@ export function runLevel(level: Level, rendererCtr: RendererConstructor, keys: K
             }
         })
 
+        // more like editor mode
         const debugButtonHandler = createButtonDownHandler('d', () => {
             globalState.debug = !globalState.debug
             if (globalState.debug) {
-                console.log("enter debug")
+                editorRenderer.display(level)
             } else {
-                console.log("exit debug")
+                editorRenderer.clear()
             }
         })
         

@@ -3,7 +3,7 @@ import { Vector2 } from "./utils.js";
 
 
 type BackgroundType = 'empty' | 'wall' | 'lava'
-const levelChars : {[char: string]: BackgroundType | EntityCreatorFn }= {
+export const levelChars : {[char: string]: BackgroundType | EntityCreatorFn }= {
     '.': 'empty',
     '#': 'wall',
     '+': 'lava',
@@ -31,9 +31,9 @@ export class Level {
         return this._entities
     }
     constructor(plan: string = simpleLevelPlan) {
-        this._plan = plan
+        this._plan = plan.trim()
 
-        const grid = plan.trim().split('\n').map(rowString => [...rowString])
+        const grid = this._plan.split('\n').map(rowString => [...rowString])
         this._height = grid.length
         this._width = grid[0].length
 
