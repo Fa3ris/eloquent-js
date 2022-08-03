@@ -97,14 +97,34 @@ class Canvas {
     constructor(picture: Picture, pointerDownCallback: () => void) {
         this.dom = createElement('canvas', {}, {
             onmousedown: (event: MouseEvent) => { 
+                if (event.button != 0) {
+                    console.log('ignore mouse button down', event.button)
+                    return
+                }
                 this.isMouseDown = true
                 this.oldMouseDown.x = event.clientX
                 this.oldMouseDown.y = event.clientY
             },
             onmouseup: (event: MouseEvent) => { 
                 console.log('mouse up', event)
+                if (event.button != 0) {
+                    console.log('ignore mouse button up', event.button)
+                    return
+                }
                 if (!this.isMouseDragging) {
-                    this.mouseClicked(event, pointerDownCallback)
+                    
+                    const xRelativeToViewport = event.clientX
+                    const yRelativeToViewport = event.clientY
+            
+                    const canvasRectRelativeToViewport = this.dom.getBoundingClientRect()
+            
+                    const pixelX = Math.floor((xRelativeToViewport - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+                    const pixelY = Math.floor((yRelativeToViewport - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+                    console.log('mouse down', {px: pixelX, py: pixelY}, event)
+            
+                    const newPicture = this.picture.draw([{x: pixelX, y: pixelY, pixel: randomColor()}])
+            
+                    this.syncState(newPicture)
                 } else {
 
                     const top = Math.min(event.clientY, this.oldMouseDown.y)
@@ -131,9 +151,7 @@ class Canvas {
                     }
 
                     const newPicture = this.picture.draw(newPixels)
-
                     this.syncState(newPicture)
-
                 }
                 this.isMouseDown = false
                 this.isMouseDragging = false
@@ -163,7 +181,7 @@ class Canvas {
         throw new Error("Method not implemented.")
     }
 
-    mouseClicked(event: MouseEvent, pointerDownCallback: () => void) {
+    private mouseClicked(event: MouseEvent, pointerDownCallback: () => void) {
 
         if (event.button != 0) {
             console.log('ignore mouse button', event.button)
