@@ -86,11 +86,64 @@ class Canvas {
 
     picture: Picture
     
+    isMouseDragging: boolean = false
+    isMouseDown: boolean = false
+
+    oldMouseDown = {
+        x : 0,
+        y: 0
+    }
+
     constructor(picture: Picture, pointerDownCallback: () => void) {
-        this.dom = createElement('canvas', {},
-        
-        {
-            onmousedown: (event: any) => this.mouseDown(event, pointerDownCallback),
+        this.dom = createElement('canvas', {}, {
+            onmousedown: (event: MouseEvent) => { 
+                this.isMouseDown = true
+                this.oldMouseDown.x = event.clientX
+                this.oldMouseDown.y = event.clientY
+            },
+            onmouseup: (event: MouseEvent) => { 
+                console.log('mouse up', event)
+                if (!this.isMouseDragging) {
+                    this.mouseClicked(event, pointerDownCallback)
+                } else {
+
+                    const top = Math.min(event.clientY, this.oldMouseDown.y)
+                    const left = Math.min(event.clientX, this.oldMouseDown.x)
+
+                    const bottom = Math.max(event.clientY, this.oldMouseDown.y)
+                    const right = Math.max(event.clientX, this.oldMouseDown.x)
+
+                    const canvasRectRelativeToViewport = this.dom.getBoundingClientRect()
+
+                    const pixelXMin = Math.floor((left - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+                    const pixelXMax = Math.floor((right - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+
+                    const pixelYMin = Math.floor((top - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+                    const pixelYMax = Math.floor((bottom - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+
+                    const newColor = randomColor()
+
+                    const newPixels = []
+                    for (let x = pixelXMin; x <= pixelXMax; x++) {
+                        for (let y = pixelYMin; y <= pixelYMax; y++) [
+                            newPixels.push({x, y, pixel: newColor})
+                        ]
+                    }
+
+                    const newPicture = this.picture.draw(newPixels)
+
+                    this.syncState(newPicture)
+
+                }
+                this.isMouseDown = false
+                this.isMouseDragging = false
+            },
+            onmousemove: (event: any) => { 
+                if (this.isMouseDown && !this.isMouseDragging) {
+                    console.log('mouse move', event)
+                    this.isMouseDragging = true
+                }
+            },
             ontouchstart: (event: any) => this.touch(event, pointerDownCallback)
         }) as HTMLCanvasElement
 
@@ -110,7 +163,7 @@ class Canvas {
         throw new Error("Method not implemented.")
     }
 
-    mouseDown(event: MouseEvent, pointerDownCallback: () => void) {
+    mouseClicked(event: MouseEvent, pointerDownCallback: () => void) {
 
         if (event.button != 0) {
             console.log('ignore mouse button', event.button)
