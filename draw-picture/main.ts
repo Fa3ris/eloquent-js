@@ -1,6 +1,3 @@
-console.log('draw PICTURE')
-
-
 type Color = string // '#aabbcc'
 
 type Pixel = Color
@@ -51,7 +48,42 @@ type State = {
 
 type Action = State
 
-type Tool = any
+
+interface Tool {
+
+    mouseDown?: (data: {pos: {x: number, y: number}}) => void;
+
+
+    dragging?(data: {
+        rect: {
+            top: number,
+            bottom: number,
+            left: number,
+            right: number
+    },
+        pos: {
+            x: number,
+            y: number
+        }
+
+    }) : void
+
+
+    clicked?(data: {
+        pos: {
+            x: number,
+            y: number
+        }
+    }) : void
+
+    draggingReleased?(data: {
+        rect: {
+            top: number,
+            bottom: number,
+            left: number,
+            right: number
+    }}) : void
+}
 
 
 function updateState(state: State, action: Action): State {
@@ -94,6 +126,8 @@ class Canvas {
         y: 0
     }
 
+    tool?: Tool
+
     constructor(picture: Picture, pointerDownCallback: () => void) {
         this.dom = createElement('canvas', {}, {
             onmousedown: (event: MouseEvent) => { 
@@ -104,6 +138,8 @@ class Canvas {
                 this.isMouseDown = true
                 this.oldMouseDown.x = event.clientX
                 this.oldMouseDown.y = event.clientY
+
+                this.tool?.mouseDown?.({ pos: {x: event.clientX, y: event.clientY}})
             },
             onmouseup: (event: MouseEvent) => { 
                 console.log('mouse up', event)
@@ -111,58 +147,6 @@ class Canvas {
                     console.log('ignore mouse button up', event.button)
                     return
                 }
-                if (!this.isMouseDragging) {
-                    
-                    const xRelativeToViewport = event.clientX
-                    const yRelativeToViewport = event.clientY
-            
-                    const canvasRectRelativeToViewport = this.dom.getBoundingClientRect()
-            
-                    const pixelX = Math.floor((xRelativeToViewport - canvasRectRelativeToViewport.x) / Canvas.SCALE)
-                    const pixelY = Math.floor((yRelativeToViewport - canvasRectRelativeToViewport.y) / Canvas.SCALE)
-                    console.log('mouse down', {px: pixelX, py: pixelY}, event)
-            
-                    const newPicture = this.picture.draw([{x: pixelX, y: pixelY, pixel: randomColor()}])
-            
-                    this.syncState(newPicture)
-                } else {
-
-                    const top = Math.min(event.clientY, this.oldMouseDown.y)
-                    const left = Math.min(event.clientX, this.oldMouseDown.x)
-
-                    const bottom = Math.max(event.clientY, this.oldMouseDown.y)
-                    const right = Math.max(event.clientX, this.oldMouseDown.x)
-
-                    const canvasRectRelativeToViewport = this.dom.getBoundingClientRect()
-
-                    const pixelXMin = Math.floor((left - canvasRectRelativeToViewport.x) / Canvas.SCALE)
-                    const pixelXMax = Math.floor((right - canvasRectRelativeToViewport.x) / Canvas.SCALE)
-
-                    const pixelYMin = Math.floor((top - canvasRectRelativeToViewport.y) / Canvas.SCALE)
-                    const pixelYMax = Math.floor((bottom - canvasRectRelativeToViewport.y) / Canvas.SCALE)
-
-                    const newColor = randomColor()
-
-                    const newPixels = []
-                    for (let x = pixelXMin; x <= pixelXMax; x++) {
-                        for (let y = pixelYMin; y <= pixelYMax; y++) [
-                            newPixels.push({x, y, pixel: newColor})
-                        ]
-                    }
-
-                    const newPicture = this.picture.draw(newPixels)
-                    this.syncState(newPicture)
-                }
-                this.isMouseDown = false
-                this.isMouseDragging = false
-            },
-            onmousemove: (event: MouseEvent) => { 
-                if (this.isMouseDown && !this.isMouseDragging) {
-                    console.log('mouse move', event)
-                    this.isMouseDragging = true
-                }
-
-                // preview rectangle
                 if (this.isMouseDragging) {
 
                     const top = Math.min(event.clientY, this.oldMouseDown.y)
@@ -179,19 +163,76 @@ class Canvas {
                     const pixelYMin = Math.floor((top - canvasRectRelativeToViewport.y) / Canvas.SCALE)
                     const pixelYMax = Math.floor((bottom - canvasRectRelativeToViewport.y) / Canvas.SCALE)
 
-                    const newColor = "#ff0000"
+                    this.tool?.draggingReleased?.({
 
-                    const newPixels = []
-                    for (let x = pixelXMin; x <= pixelXMax; x++) {
-                        for (let y = pixelYMin; y <= pixelYMax; y++) [
-                            newPixels.push({x, y, pixel: newColor})
-                        ]
-                    }
+                        rect: {
+                            top: pixelYMin,
+                            bottom: pixelYMax,
+                            left: pixelXMin,
+                            right: pixelXMax
+                        }
+                    })
 
-                    const newPicture = this.picture.draw(newPixels)
+                 
+                } else { // simple click
 
-                    // draw but do not save
-                    drawPicture(newPicture, this.dom, Canvas.SCALE)
+                    const xRelativeToViewport = event.clientX
+                    const yRelativeToViewport = event.clientY
+            
+                    const canvasRectRelativeToViewport = this.dom.getBoundingClientRect()
+            
+                    const pixelX = Math.floor((xRelativeToViewport - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+                    const pixelY = Math.floor((yRelativeToViewport - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+            
+                    this.tool?.clicked?.({
+                        pos: {
+                            x: pixelX,
+                            y: pixelY,
+                        }
+                    })
+
+                   
+                }
+                this.isMouseDown = false
+                this.isMouseDragging = false
+            },
+            onmousemove: (event: MouseEvent) => { 
+                if (this.isMouseDown && !this.isMouseDragging) {
+                    console.log('mouse move', event)
+                    this.isMouseDragging = true
+                }
+
+                if (this.isMouseDragging) {
+
+                    const top = Math.min(event.clientY, this.oldMouseDown.y)
+                    const left = Math.min(event.clientX, this.oldMouseDown.x)
+
+                    const bottom = Math.max(event.clientY, this.oldMouseDown.y)
+                    const right = Math.max(event.clientX, this.oldMouseDown.x)
+
+                    const canvasRectRelativeToViewport = this.dom.getBoundingClientRect()
+
+                    const pixelXMin = Math.floor((left - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+                    const pixelXMax = Math.floor((right - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+
+                    const pixelYMin = Math.floor((top - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+                    const pixelYMax = Math.floor((bottom - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+
+                    const pixelX = Math.floor((event.clientX - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+                    const pixelY = Math.floor((event.clientY - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+
+                    this.tool?.dragging?.({
+                        rect: {
+                            top: pixelYMin,
+                            bottom: pixelYMax,
+                            left: pixelXMin,
+                            right: pixelXMax
+                        },
+                        pos: {
+                            x: pixelX,
+                            y: pixelY
+                        }
+                    })
                 }
             },
 
@@ -211,31 +252,10 @@ class Canvas {
     touch(event: any, pointerDownCallback: () => void) {
         throw new Error("Method not implemented.")
     }
-
-    private mouseClicked(event: MouseEvent, pointerDownCallback: () => void) {
-
-        if (event.button != 0) {
-            console.log('ignore mouse button', event.button)
-            return
-        }
-        const xRelativeToViewport = event.clientX
-        const yRelativeToViewport = event.clientY
-
-        const canvasRectRelativeToViewport = this.dom.getBoundingClientRect()
-
-        const pixelX = Math.floor((xRelativeToViewport - canvasRectRelativeToViewport.x) / Canvas.SCALE)
-        const pixelY = Math.floor((yRelativeToViewport - canvasRectRelativeToViewport.y) / Canvas.SCALE)
-        console.log('mouse down', {px: pixelX, py: pixelY}, event)
-
-        const newPicture = this.picture.draw([{x: pixelX, y: pixelY, pixel: randomColor()}])
-
-        this.syncState(newPicture)
-    }
 }
 
 function drawPicture(picture: Picture, canvas: HTMLCanvasElement, scale: number) {
 
-    console.log('draw picture', picture, canvas, scale)
     canvas.width = picture.w * scale
     canvas.height = picture.h * scale
 
@@ -270,5 +290,133 @@ function randomColor(): Color {
 }
 
 const c = new Canvas(p, () => {})
+
+class Rect implements Tool {
+
+    canvas : Canvas
+
+    color: Color
+
+    constructor(canvas: Canvas, color: Color) {
+        this.canvas = canvas
+        this.color = color
+    }
+
+    dragging(data: {
+        rect: {
+            top: number; bottom: number;
+            left: number; right: number
+        },
+        pos: {
+            x: number,
+            y: number
+        }
+    }): void {
+
+        
+        const newPixels = []
+        for (let x = data.rect.left; x <= data.rect.right; x++) {
+            for (let y = data.rect.top; y <= data.rect.bottom; y++) [
+                newPixels.push({x, y, pixel: this.color})
+            ]
+        }
+
+         const newPicture = this.canvas.picture.draw(newPixels)
+
+         drawPicture(newPicture, this.canvas.dom, Canvas.SCALE)
+
+    }
+
+
+    draggingReleased(data: {
+        rect: {
+            top: number; bottom: number;
+            left: number; right: number
+        },
+       
+    }): void {
+
+
+        const newPixels = []
+        for (let x = data.rect.left; x <= data.rect.right; x++) {
+            for (let y = data.rect.top; y <= data.rect.bottom; y++) [
+                newPixels.push({x, y, pixel: this.color})
+            ]
+        }
+
+        const newPicture = this.canvas.picture.draw(newPixels)
+
+        this.canvas.syncState(newPicture)
+    }
+
+}
+
+
+class Draw implements Tool {
+    
+    canvas : Canvas
+
+    color: Color
+
+    pixels: {x: number; y: number} [] = []
+
+    constructor(canvas: Canvas, color: Color) {
+        this.canvas = canvas
+
+        this.color = color
+    }
+
+    dragging(data: {
+        rect: {
+            top: number; bottom: number;
+            left: number; right: number
+        },
+        pos: {
+            x: number,
+            y: number
+        }
+    }): void {
+
+        this.pixels.push({x: data.pos.x, y: data.pos.y})
+
+        const newPicture = this.canvas.picture.draw( this.pixels.map(p => {
+            return {...p, pixel: this.color}
+        }))
+            
+        drawPicture(newPicture, this.canvas.dom, Canvas.SCALE)
+
+    }
+
+    clicked(data: { pos: { x: number; y: number } }): void {
+
+        const newPicture = this.canvas.picture.draw([{x : data.pos.x, y: data.pos.y, pixel: this.color}])
+            
+        this.canvas.syncState(newPicture)
+    }
+
+    draggingReleased(data: {
+        rect: {
+            top: number; bottom: number;
+            left: number; right: number
+        },
+       
+    }): void {
+
+        const newPicture = this.canvas.picture.draw( this.pixels.map(p => {
+            return {...p, pixel: this.color}
+        }))
+
+        this.canvas.syncState(newPicture)
+            
+        this.pixels.length = 0
+    }
+
+}
+
+const drawTool = new Draw(c, "#00ffa0")
+const rectTool = new Rect(c, "#00ffa0")
+
+c.tool = drawTool
+
 
 document.body.append(c.dom)
