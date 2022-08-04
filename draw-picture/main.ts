@@ -91,7 +91,7 @@ function updateState(state: State, action: Action): State {
 }
 
 
-function createElement(name: string, attributes: {[name: string]: string}, props: {[name: string] : any}, ...children: Node[]): HTMLElement {
+function createElement(name: string, attributes: {[name: string]: string}, props: {[name: string] : any}, ...children: (Node | string)[]): HTMLElement {
 
     const elt = document.createElement(name);
     for (let entry of Object.entries(attributes)) {
@@ -413,10 +413,54 @@ class Draw implements Tool {
 
 }
 
-const drawTool = new Draw(c, "#00ffa0")
-const rectTool = new Rect(c, "#00ffa0")
+const initColor = randomColor()
+
+const drawTool = new Draw(c, initColor)
+const rectTool = new Rect(c, initColor)
 
 c.tool = drawTool
 
-
 document.body.append(c.dom)
+
+const select = createElement("select", {}, {
+
+    onchange: (change: Event) => {
+
+        const select: HTMLSelectElement = change.target as HTMLSelectElement
+
+        switch(select.options[select.options.selectedIndex].value) {
+            case 'draw':
+                c.tool = drawTool
+                break
+            case 'rect':
+                c.tool = rectTool
+                break
+            default:
+                break
+        }
+    }
+}, 
+
+createElement("option", {value: 'draw'}, {}, 'pen'),
+createElement("option", {value: 'rect'}, {}, 'rectangle'),
+
+) as HTMLSelectElement
+
+document.body.append(select)
+
+const colorPicker= createElement("input", {
+    type: 'color',
+    value: initColor
+}, 
+
+{
+    oninput: (input: Event) => {
+        const color = (input.target as HTMLInputElement).value as string
+
+        drawTool.color = color
+        rectTool.color = color
+    }
+}) as HTMLInputElement
+
+
+document.body.append(colorPicker)
