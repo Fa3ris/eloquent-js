@@ -84,7 +84,7 @@ class Canvas {
 
     dom: HTMLCanvasElement
 
-    picture: Picture
+    picture!: Picture // cannot be null
     
     isMouseDragging: boolean = false
     isMouseDown: boolean = false
@@ -156,20 +156,51 @@ class Canvas {
                 this.isMouseDown = false
                 this.isMouseDragging = false
             },
-            onmousemove: (event: any) => { 
+            onmousemove: (event: MouseEvent) => { 
                 if (this.isMouseDown && !this.isMouseDragging) {
                     console.log('mouse move', event)
                     this.isMouseDragging = true
                 }
+
+                // preview rectangle
+                if (this.isMouseDragging) {
+
+                    const top = Math.min(event.clientY, this.oldMouseDown.y)
+                    const left = Math.min(event.clientX, this.oldMouseDown.x)
+
+                    const bottom = Math.max(event.clientY, this.oldMouseDown.y)
+                    const right = Math.max(event.clientX, this.oldMouseDown.x)
+
+                    const canvasRectRelativeToViewport = this.dom.getBoundingClientRect()
+
+                    const pixelXMin = Math.floor((left - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+                    const pixelXMax = Math.floor((right - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+
+                    const pixelYMin = Math.floor((top - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+                    const pixelYMax = Math.floor((bottom - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+
+                    const newColor = "#ff0000"
+
+                    const newPixels = []
+                    for (let x = pixelXMin; x <= pixelXMax; x++) {
+                        for (let y = pixelYMin; y <= pixelYMax; y++) [
+                            newPixels.push({x, y, pixel: newColor})
+                        ]
+                    }
+
+                    const newPicture = this.picture.draw(newPixels)
+
+                    // draw but do not save
+                    drawPicture(newPicture, this.dom, Canvas.SCALE)
+                }
             },
+
             ontouchstart: (event: any) => this.touch(event, pointerDownCallback)
+
         }) as HTMLCanvasElement
 
-        
-        this.picture = picture
         this.syncState(picture)
 
-        document.body.append(this.dom)
     }
 
     syncState(picture: Picture) {
@@ -239,3 +270,5 @@ function randomColor(): Color {
 }
 
 const c = new Canvas(p, () => {})
+
+document.body.append(c.dom)
