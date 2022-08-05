@@ -567,3 +567,140 @@ const colorPicker= createElement("input", {
 
 
 document.body.append(colorPicker)
+
+const saveButton = createElement("button", {}, {
+
+    onclick: () => {
+        const canvas = createElement("canvas", {}, {}) as HTMLCanvasElement;
+        drawPicture(c.picture, canvas, Canvas.SCALE);
+        const link = createElement("a", {
+          href: canvas.toDataURL(),
+          download: "pixelart.png"
+        }, {});
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+}, 
+
+'Save image')
+
+document.body.append(saveButton)
+
+
+const loadButton = createElement("button", {}, {
+
+    onclick: () => {
+        console.log('load image')
+
+        const fileInput = createElement("input", {
+            type: "file",
+            accept: "image/png"
+        },
+        
+        {}) as HTMLInputElement
+
+        // fileInput.onchange = (e) => {
+        //     console.log(e)
+        // }
+
+        fileInput.oninput = function(e)  {
+            console.log(fileInput.files?.[0])
+
+            const file = fileInput.files?.[0]
+
+            if (file == null) { return }
+
+            const fileReader = new FileReader()
+
+            fileReader.onload = () => {
+
+                console.log(fileReader.result)
+
+                const img = createElement("img", {
+                    
+                    
+                }, {
+                    onload : () => {
+
+                        console.log('img', img)
+
+                        const width = img.width;
+                        const height = img.height;
+
+                        const tempCanvas = createElement("canvas", {}, {width, height}) as HTMLCanvasElement
+
+                        console.log(tempCanvas)
+                        const ctx = tempCanvas.getContext('2d')
+
+                        ctx?.drawImage(img, width, height)
+
+                        const imgData = ctx?.getImageData(0, 0, width, height)
+
+                        console.log(imgData?.data)
+
+
+
+                        const testCanvas = createElement("canvas", {}, {width, height}) as HTMLCanvasElement
+                         const testctx = testCanvas.getContext('2d');
+                         testctx?.rect(10, 10, 100, 100);
+                         testctx?.fill();
+
+                        console.log(testctx?.getImageData(50, 50, 100, 100));
+                    },
+
+                    src: fileReader.result
+
+                }) as HTMLImageElement
+            }
+            fileReader.readAsDataURL(file)
+            
+        }
+
+        document.body.append(fileInput)
+
+        fileInput.click()
+        fileInput.remove()
+        
+
+
+    }
+}, 
+
+'Load image')
+
+const undoButton = createElement("button", {
+    disabled: 'true'
+}, {
+
+    onclick: () => {
+        console.log('undo')
+    }
+}, 
+
+'Undo')
+
+const redoButton = createElement("button", {
+    disabled: 'true'
+}, {
+    onclick: () => {
+        console.log('redo')
+    }
+},
+'Redo')
+
+const canvasScaleInput = createElement("input", {
+    type: 'number',
+}, {
+    oninput: (e: any) => {
+        console.log('scale change', e.target.value)
+    }
+}, 
+
+'scale')
+
+document.body.append(loadButton)
+document.body.append(undoButton)
+document.body.append(redoButton)
+document.body.append(canvasScaleInput)
+
