@@ -572,7 +572,7 @@ const saveButton = createElement("button", {}, {
 
     onclick: () => {
         const canvas = createElement("canvas", {}, {}) as HTMLCanvasElement;
-        drawPicture(c.picture, canvas, Canvas.SCALE);
+        drawPicture(c.picture, canvas, 1);
         const link = createElement("a", {
           href: canvas.toDataURL(),
           download: "pixelart.png"
@@ -600,12 +600,7 @@ const loadButton = createElement("button", {}, {
         
         {}) as HTMLInputElement
 
-        // fileInput.onchange = (e) => {
-        //     console.log(e)
-        // }
-
         fileInput.oninput = function(e)  {
-            console.log(fileInput.files?.[0])
 
             const file = fileInput.files?.[0]
 
@@ -614,47 +609,48 @@ const loadButton = createElement("button", {}, {
             const fileReader = new FileReader()
 
             fileReader.onload = () => {
-
-                console.log(fileReader.result)
-
                 const img = createElement("img", {
-                    
                     
                 }, {
                     onload : () => {
 
-                        console.log('img', img)
-
-                        const width = img.width;
-                        const height = img.height;
+                        // constrain width to current picture
+                        const width = c.picture.w;
+                        const height = c.picture.h;
 
                         const tempCanvas = createElement("canvas", {}, {width, height}) as HTMLCanvasElement
 
-                        console.log(tempCanvas)
                         const ctx = tempCanvas.getContext('2d')
 
-                        ctx?.drawImage(img, width, height)
+                        ctx?.drawImage(img, 0, 0)
 
                         const imgData = ctx?.getImageData(0, 0, width, height)
 
-                        console.log(imgData?.data)
+                        if (!imgData) { return }
 
+                        const pixels = []
+                        for (let i = 0; i < imgData?.data.length;) {
 
+                            const r = imgData.data[i++]
+                            const g = imgData.data[i++]
+                            const b = imgData.data[i++]
+                            const a = imgData.data[i++]
 
-                        const testCanvas = createElement("canvas", {}, {width, height}) as HTMLCanvasElement
-                         const testctx = testCanvas.getContext('2d');
-                         testctx?.rect(10, 10, 100, 100);
-                         testctx?.fill();
+                            const color = `#${toHexString(r)}${toHexString(g)}${toHexString(b)}`
 
-                        console.log(testctx?.getImageData(50, 50, 100, 100));
+                            pixels.push(color)
+                        } 
+
+                        const picture = new Picture(width, height, pixels)
+
+                        c.syncState(picture)
+                        
                     },
 
-                    src: fileReader.result
-
+                    src: fileReader.result,
                 }) as HTMLImageElement
             }
             fileReader.readAsDataURL(file)
-            
         }
 
         document.body.append(fileInput)
@@ -703,4 +699,10 @@ document.body.append(loadButton)
 document.body.append(undoButton)
 document.body.append(redoButton)
 document.body.append(canvasScaleInput)
+
+
+
+function toHexString(n: number) {
+    return n.toString(16).padStart(2, "0")
+}
 
