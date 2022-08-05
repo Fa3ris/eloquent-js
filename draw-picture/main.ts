@@ -81,8 +81,13 @@ interface Tool {
             top: number,
             bottom: number,
             left: number,
-            right: number
-    }}) : void
+            right: number,
+    },
+        pos: {
+            x: number,
+            y: number
+        }
+}) : void
 }
 
 
@@ -163,6 +168,9 @@ class Canvas {
                     const pixelYMin = Math.floor((top - canvasRectRelativeToViewport.y) / Canvas.SCALE)
                     const pixelYMax = Math.floor((bottom - canvasRectRelativeToViewport.y) / Canvas.SCALE)
 
+                    const pixelX = Math.floor((event.clientX - canvasRectRelativeToViewport.x) / Canvas.SCALE)
+                    const pixelY = Math.floor((event.clientY - canvasRectRelativeToViewport.y) / Canvas.SCALE)
+
                     this.tool?.draggingReleased?.({
 
                         rect: {
@@ -170,6 +178,10 @@ class Canvas {
                             bottom: pixelYMax,
                             left: pixelXMin,
                             right: pixelXMax
+                        },
+                        pos: {
+                            x: pixelX,
+                            y: pixelY
                         }
                     })
 
@@ -413,12 +425,99 @@ class Draw implements Tool {
 
 }
 
+class Fill implements Tool {
+
+    canvas : Canvas
+
+    color: Color
+
+    constructor(canvas: Canvas, color: Color) {
+        this.canvas = canvas
+
+        this.color = color
+    }
+
+    _fill(data: { pos: { x: number; y: number } }): void {
+        const t0 = performance.now()
+        const srcColor = this.canvas.picture.pixel(data.pos.x, data.pos.y)
+
+        console.log('fill for srcColor', srcColor)
+
+        if (srcColor === this.color) {
+            return
+        }
+
+        const queue: {x: number, y: number}[] = []
+
+        queue.push({x: data.pos.x , y: data.pos.y})
+
+        let picture = this.canvas.picture;
+
+        /* 
+            top 0 -1
+            right +1 0
+            left -1 0
+            bottom 0 +1
+        */
+        const directions = [
+            {dx : 0, dy: -1},
+            {dx : 1, dy: 0},
+            {dx : -1, dy: 0},
+            {dx : 0, dy: 1},
+
+        ]
+
+        while (queue.length > 0) {
+
+            const pixel = queue.shift()
+            if (!pixel) break
+
+            picture = picture.draw([{x : pixel.x, y: pixel.y, pixel: this.color}])
+
+            for (let {dx, dy} of directions) {
+
+                const pixelCandidate = {
+                    x: pixel.x + dx,
+                    y: pixel.y + dy
+                }
+
+                if (pixelCandidate.x < 0 || pixelCandidate.x >= picture.w 
+                    || pixelCandidate.y < 0 || pixelCandidate.y >= picture.h) {
+                    continue
+                }
+
+                const color = picture.pixel(pixelCandidate.x, pixelCandidate.y)
+
+                if (color === srcColor) {
+                    queue.push(pixelCandidate)
+                }
+            }
+        }
+        this.canvas.syncState(picture)
+
+        console.log('finish fill', performance.now() - t0)
+
+    }
+
+    clicked(data: { pos: { x: number; y: number } }): void {
+        this._fill(data)
+    }
+
+    draggingReleased(data: {
+        pos :{ x: number, y: number }
+    }) {
+        this._fill(data)
+    }
+
+}
+
 const initColor = randomColor()
 
 const drawTool = new Draw(c, initColor)
 const rectTool = new Rect(c, initColor)
+const fillTool = new Fill(c, initColor)
 
-c.tool = drawTool
+c.tool = fillTool
 
 document.body.append(c.dom)
 
@@ -435,12 +534,16 @@ const select = createElement("select", {}, {
             case 'rect':
                 c.tool = rectTool
                 break
+            case 'fill':
+                c.tool = fillTool
+                break
             default:
                 break
         }
     }
 }, 
 
+createElement("option", {value: 'fill'}, {}, 'fill'),
 createElement("option", {value: 'draw'}, {}, 'pen'),
 createElement("option", {value: 'rect'}, {}, 'rectangle'),
 
@@ -456,9 +559,9 @@ const colorPicker= createElement("input", {
 {
     oninput: (input: Event) => {
         const color = (input.target as HTMLInputElement).value as string
-
         drawTool.color = color
         rectTool.color = color
+        fillTool.color = color
     }
 }) as HTMLInputElement
 
