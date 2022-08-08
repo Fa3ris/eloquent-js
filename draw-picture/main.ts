@@ -91,6 +91,9 @@ interface Tool {
 }
 
 
+let pictureHistory: Picture[] = []
+let pictureHistoryIndex = 0
+
 function updateState(state: State, action: Action): State {
     return Object.assign({}, state, action)
 }
@@ -252,13 +255,17 @@ class Canvas {
 
         }) as HTMLCanvasElement
 
-        this.syncState(picture)
+        // do not add to History
+        this.picture = picture
+        drawPicture(picture, this.dom, Canvas.SCALE)
 
     }
 
     syncState(picture: Picture) {
+        pictureHistory[pictureHistoryIndex++] = this.picture
         this.picture = picture
         drawPicture(picture, this.dom, Canvas.SCALE)
+        syncState()
     }
 
     touch(event: any, pointerDownCallback: () => void) {
@@ -300,6 +307,37 @@ function randomColor(): Color {
 
     return `#${digits.join('')}`
 }
+
+const undoButton: HTMLButtonElement = createElement("button", {
+}, {
+
+    onclick: () => {
+        
+        console.log('undo', pictureHistoryIndex)
+        const previousPicture = pictureHistory[--pictureHistoryIndex]
+        c.picture = previousPicture
+        drawPicture(previousPicture, c.dom, Canvas.SCALE)
+        syncState()
+    },
+
+}, 
+
+'Undo') as HTMLButtonElement
+
+
+const redoButton: HTMLButtonElement = createElement("button", {
+}, {
+    onclick: () => {
+        console.log('redo', pictureHistory, pictureHistoryIndex)
+        const nextPicture = pictureHistory[pictureHistoryIndex++]
+
+        console.log(nextPicture)
+        c.picture = nextPicture
+        drawPicture(nextPicture, c.dom, Canvas.SCALE)
+        syncState()
+    }
+},
+'Redo') as HTMLButtonElement
 
 const c = new Canvas(p, () => {})
 
@@ -665,25 +703,16 @@ const loadButton = createElement("button", {}, {
 
 'Load image')
 
-const undoButton = createElement("button", {
-    disabled: 'true'
-}, {
 
-    onclick: () => {
-        console.log('undo')
-    }
-}, 
+function syncState() {
 
-'Undo')
+    console.trace('sync state', pictureHistory, pictureHistoryIndex)
+    undoButton['disabled'] = pictureHistoryIndex <= 0
 
-const redoButton = createElement("button", {
-    disabled: 'true'
-}, {
-    onclick: () => {
-        console.log('redo')
-    }
-},
-'Redo')
+    console.log('redo disabled', pictureHistoryIndex <= 0 || pictureHistoryIndex >= pictureHistory.length )
+    redoButton['disabled'] = pictureHistoryIndex <= 0 || pictureHistoryIndex >= pictureHistory.length
+    redoButton['disabled'] = true
+}
 
 const canvasScaleInput = createElement("input", {
     type: 'number',
@@ -706,3 +735,4 @@ function toHexString(n: number) {
     return n.toString(16).padStart(2, "0")
 }
 
+syncState()
