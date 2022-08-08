@@ -91,8 +91,8 @@ interface Tool {
 }
 
 
-let pictureHistory: Picture[] = []
-let pictureHistoryIndex = 0
+const undoHistory: Picture[] = []
+const redoHistory: Picture[] = []
 
 function updateState(state: State, action: Action): State {
     return Object.assign({}, state, action)
@@ -124,7 +124,7 @@ class Canvas {
 
     dom: HTMLCanvasElement
 
-    picture!: Picture // cannot be null
+    picture: Picture // cannot be null
     
     isMouseDragging: boolean = false
     isMouseDown: boolean = false
@@ -262,7 +262,8 @@ class Canvas {
     }
 
     syncState(picture: Picture) {
-        pictureHistory[pictureHistoryIndex++] = this.picture
+        redoHistory.length = 0
+        undoHistory.push(this.picture)
         this.picture = picture
         drawPicture(picture, this.dom, Canvas.SCALE)
         syncState()
@@ -313,11 +314,24 @@ const undoButton: HTMLButtonElement = createElement("button", {
 
     onclick: () => {
         
-        console.log('undo', pictureHistoryIndex)
-        const previousPicture = pictureHistory[--pictureHistoryIndex]
-        c.picture = previousPicture
-        drawPicture(previousPicture, c.dom, Canvas.SCALE)
-        syncState()
+        console.group('undo start')
+        console.log('undo - undo hist', undoHistory)
+        console.log('undo - redo hist', redoHistory)
+        console.groupEnd()
+
+        const picture = undoHistory.pop()
+        if (picture) {
+            redoHistory.push(c.picture)
+            c.picture = picture
+            drawPicture(picture, c.dom, Canvas.SCALE)
+            syncState()
+        }
+
+        console.group('undo end ',)
+        console.log('undo - undo hist', undoHistory)
+        console.log('undo - redo hist', redoHistory)
+        console.groupEnd()
+     
     },
 
 }, 
@@ -328,13 +342,26 @@ const undoButton: HTMLButtonElement = createElement("button", {
 const redoButton: HTMLButtonElement = createElement("button", {
 }, {
     onclick: () => {
-        console.log('redo', pictureHistory, pictureHistoryIndex)
-        const nextPicture = pictureHistory[pictureHistoryIndex++]
 
-        console.log(nextPicture)
-        c.picture = nextPicture
-        drawPicture(nextPicture, c.dom, Canvas.SCALE)
-        syncState()
+
+        console.group('redo start',)
+        console.log('redo - undo hist', undoHistory)
+        console.log('redo - redo hist', redoHistory)
+        console.groupEnd()
+
+
+        const picture = redoHistory.pop()
+        if (picture) {
+            undoHistory.push(c.picture)
+            c.picture = picture
+            drawPicture(picture, c.dom, Canvas.SCALE)
+            syncState()
+        }
+
+        console.group('redo end', )
+        console.log('redo - undo hist', undoHistory)
+        console.log('redo - redo hist', redoHistory)
+        console.groupEnd()
     }
 },
 'Redo') as HTMLButtonElement
@@ -706,12 +733,9 @@ const loadButton = createElement("button", {}, {
 
 function syncState() {
 
-    console.trace('sync state', pictureHistory, pictureHistoryIndex)
-    undoButton['disabled'] = pictureHistoryIndex <= 0
-
-    console.log('redo disabled', pictureHistoryIndex <= 0 || pictureHistoryIndex >= pictureHistory.length )
-    redoButton['disabled'] = pictureHistoryIndex <= 0 || pictureHistoryIndex >= pictureHistory.length
-    redoButton['disabled'] = true
+    console.trace('sync state', )
+    undoButton['disabled'] = undoHistory.length <= 0
+    redoButton['disabled'] = redoHistory.length <= 0
 }
 
 const canvasScaleInput = createElement("input", {
