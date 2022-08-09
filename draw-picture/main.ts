@@ -250,6 +250,9 @@ class Canvas {
 
         }) as HTMLCanvasElement
 
+        this.dom.width = picture.w * Canvas.SCALE
+        this.dom.height = picture.h * Canvas.SCALE
+
         // do not add to History
         this.picture = picture
         drawPicture(picture, this.dom, Canvas.SCALE)
@@ -258,8 +261,8 @@ class Canvas {
 
     syncState(picture: Picture) {
         this.pictureUpdatedFn(this.picture)
+        drawPicture(picture, this.dom, Canvas.SCALE, this.picture)
         this.picture = picture
-        drawPicture(picture, this.dom, Canvas.SCALE)
     }
 
     touch(event: any) {
@@ -267,21 +270,43 @@ class Canvas {
     }
 }
 
-function drawPicture(picture: Picture, canvas: HTMLCanvasElement, scale: number) {
-
-    canvas.width = picture.w * scale
-    canvas.height = picture.h * scale
+function drawPicture(picture: Picture, canvas: HTMLCanvasElement, scale: number, oldPicture?: Picture) {
 
     const ctx = canvas.getContext('2d')
 
     if (ctx == null) { return }
 
-    for (let x = 0; x < picture.w; x++) {
-        for (let y = 0; y < picture.h; y++) {
-            ctx.fillStyle = picture.pixel(x, y)
+    if (oldPicture) {
+        console.log('partial draw')
+        for (let {x, y, pixel} of pictureDiff(picture, oldPicture)) {
+            ctx.fillStyle = pixel
             ctx.fillRect(x * scale, y * scale, scale, scale)
         }
+    } else {
+        console.log('complete draw')
+        for (let x = 0; x < picture.w; x++) {
+            for (let y = 0; y < picture.h; y++) {
+                ctx.fillStyle = picture.pixel(x, y)
+                ctx.fillRect(x * scale, y * scale, scale, scale)
+            }
+        }
     }
+}
+
+function pictureDiff(newP: Picture, oldP: Picture): {x: number, y: number, pixel: Color}[] {
+
+    const diff = []
+    for (let x = 0; x < newP.w; x++) {
+        for (let y = 0; y < newP.h; y++) {
+            const pixel = newP.pixel(x, y)
+            if (oldP.pixel(x, y) !== pixel) {
+                diff.push({
+                    x, y, pixel: pixel
+                })
+            }
+        }
+    }
+    return diff
 }
 
 
@@ -333,7 +358,7 @@ class Rect implements Tool {
 
          const newPicture = this.canvas.picture.draw(newPixels)
 
-         drawPicture(newPicture, this.canvas.dom, Canvas.SCALE)
+         drawPicture(newPicture, this.canvas.dom, Canvas.SCALE, this.canvas.picture)
 
     }
 
@@ -393,7 +418,7 @@ class Draw implements Tool {
             return {...p, pixel: this.color}
         }))
             
-        drawPicture(newPicture, this.canvas.dom, Canvas.SCALE)
+        drawPicture(newPicture, this.canvas.dom, Canvas.SCALE, this.canvas.picture)
 
     }
 
@@ -545,8 +570,8 @@ const undoButton: HTMLButtonElement = createElement("button", {
         const picture = undoHistory.pop()
         if (picture) {
             redoHistory.push(canvas.picture)
+            drawPicture(picture, canvas.dom, Canvas.SCALE, canvas.picture)
             canvas.picture = picture
-            drawPicture(picture, canvas.dom, Canvas.SCALE)
             syncState()
         }
 
@@ -574,8 +599,8 @@ const redoButton: HTMLButtonElement = createElement("button", {
         const picture = redoHistory.pop()
         if (picture) {
             undoHistory.push(canvas.picture)
+            drawPicture(picture, canvas.dom, Canvas.SCALE, canvas.picture)
             canvas.picture = picture
-            drawPicture(picture, canvas.dom, Canvas.SCALE)
             syncState()
         }
 
@@ -630,7 +655,7 @@ createElement("option", {value: 'rect'}, {}, 'rectangle'),
 ) as HTMLSelectElement
 
 
-const colorPicker= createElement("input", {
+const colorPicker = createElement("input", {
     type: 'color',
     value: initColor
 }, 
@@ -748,6 +773,8 @@ const canvasScaleInput = createElement("input", {
         console.log('scale change', e.target.value)
         if (!e.target.value || e.target.value < 10 || e.target.value > 70) { return }
         Canvas.SCALE = e.target.value
+        canvas.dom.width = canvas.picture.w * Canvas.SCALE
+        canvas.dom.height = canvas.picture.h * Canvas.SCALE
         drawPicture(canvas.picture, canvas.dom, e.target.value)
     },
 
