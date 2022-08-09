@@ -760,7 +760,35 @@ const canvasScaleInput = createElement("input", {
 
 syncState()
 
-const dom = createElement("div", {}, {})
+const dom = createElement("div", {}, {
+    tabIndex: 0,
+})
+
+
+bindKeyAction(dom , 'z', () => {
+    undoButton.click()
+}, true)
+
+bindKeyAction(dom , 'y', () => {
+    redoButton.click()
+}, true)
+
+bindKeyAction(dom, 's', () => {
+    saveButton.click()
+})
+
+bindKeyAction(dom, 'l', () => {
+    loadButton.click()
+})
+
+bindKeyAction(dom, 'c', () => {
+    colorPicker.click()
+})
+
+bindKeyAction(dom, 't', () => {
+    select.focus()
+})
+
 
 dom.append(canvas.dom)
 dom.append(select)
@@ -772,6 +800,28 @@ dom.append(redoButton)
 dom.append(canvasScaleInput)
 
 document.body.append(dom)
+
+}
+
+
+function bindKeyAction(dom: HTMLElement, key: string,  action: () => void, needCtrlPressed = false) {
+
+    let pressed = false;
+
+    dom.addEventListener('keydown', function (e: KeyboardEvent) {
+        if (needCtrlPressed && !e.ctrlKey) { return }
+
+        if (e.key === key && !pressed) {
+            pressed = true
+            action()
+        }
+    })
+
+    dom.addEventListener('keyup',  function(e: KeyboardEvent) {
+        if (e.key === key) {
+            pressed = false
+        }
+    })
 }
 
 pixelEditor()
