@@ -91,14 +91,6 @@ interface Tool {
 }
 
 
-const undoHistory: Picture[] = []
-const redoHistory: Picture[] = []
-
-function updateState(state: State, action: Action): State {
-    return Object.assign({}, state, action)
-}
-
-
 function createElement(name: string, attributes: {[name: string]: string}, props: {[name: string] : any}, ...children: (Node | string)[]): HTMLElement {
 
     const elt = document.createElement(name);
@@ -136,7 +128,10 @@ class Canvas {
 
     tool?: Tool
 
-    constructor(picture: Picture, pointerDownCallback: () => void) {
+    pictureUpdatedFn;
+
+    constructor(picture: Picture, pictureUpdatedFn: (picture: Picture) => void) {
+        this.pictureUpdatedFn = pictureUpdatedFn
         this.dom = createElement('canvas', {}, {
             onmousedown: (event: MouseEvent) => { 
                 if (event.button != 0) {
@@ -251,7 +246,7 @@ class Canvas {
                 }
             },
 
-            ontouchstart: (event: any) => this.touch(event, pointerDownCallback)
+            ontouchstart: (event: any) => this.touch(event)
 
         }) as HTMLCanvasElement
 
@@ -262,14 +257,12 @@ class Canvas {
     }
 
     syncState(picture: Picture) {
-        redoHistory.length = 0
-        undoHistory.push(this.picture)
+        this.pictureUpdatedFn(this.picture)
         this.picture = picture
         drawPicture(picture, this.dom, Canvas.SCALE)
-        syncState()
     }
 
-    touch(event: any, pointerDownCallback: () => void) {
+    touch(event: any) {
         throw new Error("Method not implemented.")
     }
 }
@@ -294,9 +287,6 @@ function drawPicture(picture: Picture, canvas: HTMLCanvasElement, scale: number)
 
 const hexDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 
-// const p = Picture.emptyPicture(5, 8, randomColor())
-const p = Picture.randomPicture(5, 8)
-
 
 function randomColor(): Color {
 
@@ -309,64 +299,7 @@ function randomColor(): Color {
     return `#${digits.join('')}`
 }
 
-const undoButton: HTMLButtonElement = createElement("button", {
-}, {
 
-    onclick: () => {
-        
-        console.group('undo start')
-        console.log('undo - undo hist', undoHistory)
-        console.log('undo - redo hist', redoHistory)
-        console.groupEnd()
-
-        const picture = undoHistory.pop()
-        if (picture) {
-            redoHistory.push(c.picture)
-            c.picture = picture
-            drawPicture(picture, c.dom, Canvas.SCALE)
-            syncState()
-        }
-
-        console.group('undo end ',)
-        console.log('undo - undo hist', undoHistory)
-        console.log('undo - redo hist', redoHistory)
-        console.groupEnd()
-     
-    },
-
-}, 
-
-'Undo') as HTMLButtonElement
-
-
-const redoButton: HTMLButtonElement = createElement("button", {
-}, {
-    onclick: () => {
-
-
-        console.group('redo start',)
-        console.log('redo - undo hist', undoHistory)
-        console.log('redo - redo hist', redoHistory)
-        console.groupEnd()
-
-
-        const picture = redoHistory.pop()
-        if (picture) {
-            undoHistory.push(c.picture)
-            c.picture = picture
-            drawPicture(picture, c.dom, Canvas.SCALE)
-            syncState()
-        }
-
-        console.group('redo end', )
-        console.log('redo - undo hist', undoHistory)
-        console.log('redo - redo hist', redoHistory)
-        console.groupEnd()
-    }
-},
-'Redo') as HTMLButtonElement
-
-const c = new Canvas(p, () => {})
 
 class Rect implements Tool {
 
@@ -576,15 +509,97 @@ class Fill implements Tool {
 
 }
 
+
+function toHexString(n: number) {
+    return n.toString(16).padStart(2, "0")
+}
+
+
+function pixelEditor() {
+
+const undoHistory: Picture[] = []
+const redoHistory: Picture[] = []
+
+
+const picture = Picture.randomPicture(5, 8)
+
+function pictureUpdatedFn(picture: Picture) {
+    redoHistory.length = 0
+    undoHistory.push(picture)
+    syncState()
+}
+
+const canvas = new Canvas(picture, pictureUpdatedFn)
+
+
+const undoButton: HTMLButtonElement = createElement("button", {
+}, {
+
+    onclick: () => {
+        
+        console.group('undo start')
+        console.log('undo - undo hist', undoHistory)
+        console.log('undo - redo hist', redoHistory)
+        console.groupEnd()
+
+        const picture = undoHistory.pop()
+        if (picture) {
+            redoHistory.push(canvas.picture)
+            canvas.picture = picture
+            drawPicture(picture, canvas.dom, Canvas.SCALE)
+            syncState()
+        }
+
+        console.group('undo end ',)
+        console.log('undo - undo hist', undoHistory)
+        console.log('undo - redo hist', redoHistory)
+        console.groupEnd()
+     
+    },
+
+}, 
+
+'Undo') as HTMLButtonElement
+
+
+const redoButton: HTMLButtonElement = createElement("button", {
+}, {
+    onclick: () => {
+
+        console.group('redo start',)
+        console.log('redo - undo hist', undoHistory)
+        console.log('redo - redo hist', redoHistory)
+        console.groupEnd()
+
+        const picture = redoHistory.pop()
+        if (picture) {
+            undoHistory.push(canvas.picture)
+            canvas.picture = picture
+            drawPicture(picture, canvas.dom, Canvas.SCALE)
+            syncState()
+        }
+
+        console.group('redo end', )
+        console.log('redo - undo hist', undoHistory)
+        console.log('redo - redo hist', redoHistory)
+        console.groupEnd()
+    }
+},
+'Redo') as HTMLButtonElement
+
+
+function syncState() {
+    undoButton['disabled'] = undoHistory.length <= 0
+    redoButton['disabled'] = redoHistory.length <= 0
+}
+
 const initColor = randomColor()
 
-const drawTool = new Draw(c, initColor)
-const rectTool = new Rect(c, initColor)
-const fillTool = new Fill(c, initColor)
+const drawTool = new Draw(canvas, initColor)
+const rectTool = new Rect(canvas, initColor)
+const fillTool = new Fill(canvas, initColor)
 
-c.tool = fillTool
-
-document.body.append(c.dom)
+canvas.tool = drawTool
 
 const select = createElement("select", {}, {
 
@@ -594,13 +609,13 @@ const select = createElement("select", {}, {
 
         switch(select.options[select.options.selectedIndex].value) {
             case 'draw':
-                c.tool = drawTool
+                canvas.tool = drawTool
                 break
             case 'rect':
-                c.tool = rectTool
+                canvas.tool = rectTool
                 break
             case 'fill':
-                c.tool = fillTool
+                canvas.tool = fillTool
                 break
             default:
                 break
@@ -608,13 +623,12 @@ const select = createElement("select", {}, {
     }
 }, 
 
-createElement("option", {value: 'fill'}, {}, 'fill'),
 createElement("option", {value: 'draw'}, {}, 'pen'),
+createElement("option", {value: 'fill'}, {}, 'fill'),
 createElement("option", {value: 'rect'}, {}, 'rectangle'),
 
 ) as HTMLSelectElement
 
-document.body.append(select)
 
 const colorPicker= createElement("input", {
     type: 'color',
@@ -631,15 +645,13 @@ const colorPicker= createElement("input", {
 }) as HTMLInputElement
 
 
-document.body.append(colorPicker)
-
 const saveButton = createElement("button", {}, {
 
     onclick: () => {
-        const canvas = createElement("canvas", {}, {}) as HTMLCanvasElement;
-        drawPicture(c.picture, canvas, 1);
+        const saveCanvas = createElement("canvas", {}, {}) as HTMLCanvasElement;
+        drawPicture(canvas.picture, saveCanvas, 1);
         const link = createElement("a", {
-          href: canvas.toDataURL(),
+          href: saveCanvas.toDataURL(),
           download: "pixelart.png"
         }, {});
         document.body.appendChild(link);
@@ -649,8 +661,6 @@ const saveButton = createElement("button", {}, {
 }, 
 
 'Save image')
-
-document.body.append(saveButton)
 
 
 const loadButton = createElement("button", {}, {
@@ -680,8 +690,8 @@ const loadButton = createElement("button", {}, {
                     onload : () => {
 
                         // constrain width to current picture
-                        const width = c.picture.w;
-                        const height = c.picture.h;
+                        const width = canvas.picture.w;
+                        const height = canvas.picture.h;
 
                         const tempCanvas = createElement("canvas", {}, {width, height}) as HTMLCanvasElement
 
@@ -708,7 +718,7 @@ const loadButton = createElement("button", {}, {
 
                         const picture = new Picture(width, height, pixels)
 
-                        c.syncState(picture)
+                        canvas.syncState(picture)
                         
                     },
 
@@ -731,13 +741,6 @@ const loadButton = createElement("button", {}, {
 'Load image')
 
 
-function syncState() {
-
-    console.trace('sync state', )
-    undoButton['disabled'] = undoHistory.length <= 0
-    redoButton['disabled'] = redoHistory.length <= 0
-}
-
 const canvasScaleInput = createElement("input", {
     type: 'number',
 }, {
@@ -745,7 +748,7 @@ const canvasScaleInput = createElement("input", {
         console.log('scale change', e.target.value)
         if (!e.target.value || e.target.value < 10 || e.target.value > 70) { return }
         Canvas.SCALE = e.target.value
-        drawPicture(c.picture, c.dom, e.target.value)
+        drawPicture(canvas.picture, canvas.dom, e.target.value)
     },
 
     value: Canvas.SCALE,
@@ -755,15 +758,20 @@ const canvasScaleInput = createElement("input", {
 
 'scale')
 
-document.body.append(loadButton)
-document.body.append(undoButton)
-document.body.append(redoButton)
-document.body.append(canvasScaleInput)
+syncState()
 
+const dom = createElement("div", {}, {})
 
+dom.append(canvas.dom)
+dom.append(select)
+dom.append(colorPicker)
+dom.append(saveButton)
+dom.append(loadButton)
+dom.append(undoButton)
+dom.append(redoButton)
+dom.append(canvasScaleInput)
 
-function toHexString(n: number) {
-    return n.toString(16).padStart(2, "0")
+document.body.append(dom)
 }
 
-syncState()
+pixelEditor()
