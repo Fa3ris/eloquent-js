@@ -743,7 +743,14 @@ const canvasScaleInput = createElement("input", {
 }, {
     oninput: (e: any) => {
         console.log('scale change', e.target.value)
-    }
+        if (!e.target.value || e.target.value < 10 || e.target.value > 70) { return }
+        Canvas.SCALE = e.target.value
+        drawPicture(c.picture, c.dom, e.target.value)
+    },
+
+    value: Canvas.SCALE,
+    min: 10,
+    max: 70
 }, 
 
 'scale')
