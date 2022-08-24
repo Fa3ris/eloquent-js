@@ -1,8 +1,15 @@
 import chalk from 'chalk';
 
-import {readFile, writeFile} from 'fs'
+import {readFile, writeFile, createReadStream} from 'fs'
 
-import {createServer, request} from 'http'
+import { promises as fsPromises } from 'fs';
+
+const readdirPromise = fsPromises.readdir
+const statPromise = fsPromises.stat
+
+import * as PATH from 'path'
+
+import {createServer, IncomingMessage, request} from 'http'
 
 console.log(chalk.blue('Hello server!'));
 console.log('args are', chalk.blue(process.argv));
@@ -23,13 +30,97 @@ writeFile('out/msg.txt', 'sending msg', {
     console.log('write error', err)
 })
 
+
+const httpActionHandlers: { [key: string]: (req: IncomingMessage) => any } = {}
+
+
+httpActionHandlers['GET'] = getFile
+
+async function getFile(request: IncomingMessage) {
+
+    const url = new URL(request.url || '', `http://${request.headers.host}`);
+
+    console.log('url searched', url.pathname, 'params', url.searchParams)
+    console.log('decoded path', decodeURIComponent(url.pathname),)
+    
+    const path = decodeURIComponent(url.pathname).slice(1)
+
+    const absolutePath = PATH.resolve('out' + PATH.sep + path)
+    console.log(absolutePath, process.cwd())
+    const relative = PATH.relative(process.cwd() + PATH.sep + 'out', absolutePath)
+    console.log('relative', relative);
+
+    if (!relative) {
+        console.error('forbid access to', absolutePath)
+        return {
+            status: 403,
+            body: 'forbidden',
+            type: 'text/plain'
+        }
+    }
+    let stats;
+    try {
+        stats = await statPromise(absolutePath, {
+        })
+    } catch (error) {
+        console.error('file does not exists', error)
+        return {
+            status: 404,
+            body: 'not found [' + path + ']',
+            type: 'text/html'
+        }
+    }
+    
+    if (stats.isFile()) {
+        return {
+            body: createReadStream(absolutePath),
+            type: 'text/html'
+        }
+    } else {
+        return {
+            body: (await readdirPromise(absolutePath)).join('\n'),
+            type: 'text/plain'
+        }
+    }
+       
+    
+}
+
+async function notAllowed(request: IncomingMessage) {
+
+    return {
+        status: 405,
+        body: `method ${request.method} is not supported`
+    }
+}
+
 createServer((req, res) => {
 
-    res.writeHead(200, {'Content-Type': "text/html"})
-    res.write('<h1>Hello from server</h1>')
-    res.write(`<p>url requested: <b>${req.url}<b></p>`)
-    res.end()
+    const handler = httpActionHandlers[req.method as string] || notAllowed
 
+    handler(req).catch((err: any) => {
+        console.error(err)
+        return err
+    }).
+    
+    then(({ body, status = 200, type = "text/plain"} : {body: any, status: number, type: string}): void => {
+        if (typeof body === 'string') console.log(body)
+        if (body && body.pipe) {
+            body.on('end', () => {
+                res.writeHead(status, {"Content-Type": type})
+            })
+            body.on('error', (err: any) => {
+                console.error(err)
+                res.writeHead(500, {"Content-Type": type})
+                res.end('error')
+            })
+            body.pipe(res)
+        }
+        else { 
+            res.writeHead(status, {"Content-Type": type})
+            res.end(body)
+        }
+    })
 }).listen(8080)
 
 
